@@ -34,7 +34,7 @@
 ### MVP 범위 (1일 개발 기준)
 
 **In Scope**
-- DOCX 업로드 및 텍스트 파싱 (하이브리드: python-docx + LLM 구조화)
+- DOCX 업로드 및 텍스트 파싱 (python-docx 코드 기반, LLM 불필요)
 - AI 기반 리스크 분석 리포트 생성 및 조회
 - Legal Agent 리스크 판단 프롬프트 커스터마이징 UI
 - 이전 버전 대비 조항 Diff 뷰 (코드 기반 JSON Diff + 리스크 영향 요약)
@@ -63,9 +63,9 @@
 ```
 DOCX 업로드
     ↓
-[python-docx] ──→ 원문 텍스트 추출 (코드, 확정적)
+[python-docx] ──→ 텍스트·표 추출 + 규칙 기반 구조화 (코드, 확정적)
     ↓
-[Parsing Agent] ──→ Contract JSON (LLM: 유형 분류, 조항 태깅, 당사자 추출)
+Contract JSON (코드 생성)
     ↓
     ├──→ [Legal Review Agent] ──→ Risk Report JSON
     │        ├─ tool: check_risk (커스텀 프롬프트 기반 리스크 탐지)
@@ -87,7 +87,7 @@ DOCX 업로드
 
 | 구성 요소 | 유형 | AI 필요 근거 |
 |-----------|------|-------------|
-| **Parsing Agent** | AI Agent | 비정형 계약서를 정형 JSON으로 변환 — 형태가 제각각이므로 LLM 필수 |
+| **DOCX 파서** | 코드 (python-docx) | 텍스트·표 추출 + 규칙 기반 구조화 — 확정적 처리로 LLM 불필요 |
 | **Legal Review Agent** | AI Agent | 법적 리스크 판단, 손익 분석 — 도메인 지식 기반 추론 필수 |
 | **Search Agent** | AI Agent | 자연어 질의 → 전 버전 계약 히스토리 검색 + 답변 생성 |
 | Diff 로직 | 코드 (tool) | JSON 구조 비교는 확정적 — deepdiff로 즉시·정확하게 처리 |
@@ -96,16 +96,16 @@ DOCX 업로드
 
 ---
 
-### Agent 1: Parsing Agent
+### DOCX 파서 (코드 기반)
 
-**역할**: 추출된 원문 텍스트 → 구조화된 계약 JSON 변환
+**역할**: DOCX 파일 → Contract JSON 변환 (LLM 없이 python-docx + 규칙 기반)
 
 **처리 흐름**:
 ```
-DOCX 파일 → [python-docx] 텍스트 추출 (코드) → [LLM] 구조화 (Agent)
+DOCX 파일 → [python-docx] 텍스트·표 추출 → 규칙 기반 구조화 → Contract JSON
 ```
 
-**입력**: python-docx로 추출된 원문 텍스트
+**입력**: 업로드된 DOCX 파일 (S3에서 다운로드)
 
 **출력**: Contract JSON
 
@@ -113,28 +113,28 @@ DOCX 파일 → [python-docx] 텍스트 추출 (코드) → [LLM] 구조화 (Age
 {
   "contract_type": "NDA | MSA | SI | SLA | Maintenance | Other",
   "parties": {
-    "party_a": { "name": "메가존클라우드", "representative": "..." },
-    "party_b": { "name": "고객사명", "representative": "..." }
+    "party_a": { "name": "메가존클라우드", "representative": null },
+    "party_b": { "name": "고객사명", "representative": null }
   },
   "dates": {
-    "contract_date": "YYYY-MM-DD",
-    "start_date": "YYYY-MM-DD",
-    "end_date": "YYYY-MM-DD",
-    "renewal_terms": "..."
+    "contract_date": null,
+    "start_date": null,
+    "end_date": null,
+    "renewal_terms": null
   },
   "financials": {
     "total_amount": 0,
     "currency": "KRW",
-    "payment_terms": "...",
-    "penalty_clause": "..."
+    "payment_terms": null,
+    "penalty_clause": null
   },
   "clauses": [
     {
       "id": "clause_001",
-      "type": "liability | ip | confidentiality | termination | dispute | penalty | other",
-      "title": "조항명",
+      "type": "other",
+      "title": "조항명 (단락 헤딩 추출)",
       "content": "원문 텍스트",
-      "paragraph": 3
+      "paragraph": 1
     }
   ]
 }
@@ -145,11 +145,11 @@ DOCX 파일 → [python-docx] 텍스트 추출 (코드) → [LLM] 구조화 (Age
 | 기능 | 설명 | 처리 방식 |
 |------|------|-----------|
 | DOCX 텍스트 추출 | 원문 텍스트, 표 데이터 추출 | 코드 (python-docx) |
-| 계약 유형 자동 분류 | NDA / MSA / SI 도급 / SLA / 유지보수 / 기타 | LLM |
-| 당사자 정보 추출 | 갑·을 법인명, 대표자, 담당자 | LLM |
-| 핵심 날짜 추출 | 계약일, 이행기간, 만료일, 자동갱신 조건 | LLM |
-| 금액 정보 추출 | 계약금액, 지급조건, 위약금/지체상금 | LLM |
-| 조항 분류 | 6개 유형(책임/지재권/비밀유지/해지/분쟁해결/위약금)으로 태깅 | LLM |
+| 계약 유형 분류 | 파일명·제목 키워드 매칭 (NDA/MSA/SI 등) | 코드 (regex) |
+| 당사자 정보 추출 | "갑", "을" 키워드 인접 텍스트 파싱 | 코드 (regex) |
+| 핵심 날짜 추출 | 날짜 패턴 정규식 매칭 | 코드 (regex) |
+| 금액 정보 추출 | 금액 패턴 정규식 매칭 (억/만원 등) | 코드 (regex) |
+| 조항 분리 | 단락 헤딩(제N조) 기준으로 조항 분리 | 코드 (python-docx 스타일) |
 
 ---
 
@@ -157,7 +157,7 @@ DOCX 파일 → [python-docx] 텍스트 추출 (코드) → [LLM] 구조화 (Age
 
 **역할**: 계약 JSON → 리스크 조항 탐지 + 손익 분석 + 이전 버전 Diff 리스크 평가
 
-**입력**: Parsing Agent 출력 JSON + 커스텀 리스크 판단 프롬프트
+**입력**: DOCX 파서(코드)가 생성한 Contract JSON + 커스텀 리스크 판단 프롬프트
 
 **출력**: Risk Report JSON + Diff Report JSON (이전 버전 존재 시)
 
@@ -427,7 +427,7 @@ DRAFT → PARSING → REVIEWING → PENDING_APPROVAL → APPROVED / REJECTED
 
 | 영역 | 서비스 | 용도 |
 |------|--------|------|
-| AI 모델 | **AWS Bedrock** (Claude 3.5 Sonnet v1) | Agent 추론 엔진 |
+| AI 모델 | **AWS Bedrock** (Claude 3.5 Sonnet v2) | Agent 추론 엔진 |
 | Agent 오케스트레이션 | **AWS Strands SDK** | Multi-Agent 파이프라인 구성 |
 | RAG | **AWS Bedrock Knowledge Bases** | 계약서 히스토리 검색 (자동 청킹·임베딩·인덱싱) |
 | 벡터 검색 | **Amazon OpenSearch Serverless** | Bedrock KB 벡터 저장소 (자동 프로비저닝) |
@@ -440,7 +440,7 @@ DRAFT → PARSING → REVIEWING → PENDING_APPROVAL → APPROVED / REJECTED
 | 도구 | 역할 | 비고 |
 |------|------|------|
 | **Claude Code** | 코드 생성·수정·디버깅 보조 | Bedrock 백엔드 연결 (`CLAUDE_CODE_USE_BEDROCK=1`) |
-| **AWS Bedrock** | Agent LLM 추론 엔진 + Claude Code 백엔드 | Claude 3.5 Sonnet v1, ap-northeast-2 |
+| **AWS Bedrock** | Agent LLM 추론 엔진 + Claude Code 백엔드 | Claude 3.5 Sonnet v2, ap-northeast-2 |
 
 > Claude Code → Bedrock 연결 시 Anthropic API 크레딧 불필요. AWS 예산(25만원) 안에서 통합 관리.
 
@@ -467,15 +467,15 @@ def get_model():
     provider = os.getenv("MODEL_PROVIDER", "groq")
     if provider == "bedrock":
         return BedrockModel(
-            model_id="anthropic.claude-3-5-sonnet-20240620-v1:0",
+            model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
             region_name="ap-northeast-2"
         )
     return LiteLLMModel(model_id="groq/llama-3.3-70b-versatile")
 
 model = get_model()
 
-# --- Agent 정의 ---
-parsing_agent = Agent(model=model, tools=[extract_docx_text, classify_contract, extract_parties])
+# --- Agent 정의 (Parsing은 코드 기반, Agent 아님) ---
+# parse_contract(): python-docx + regex로 Contract JSON 생성 (코드, LLM 불필요)
 legal_agent   = Agent(model=model, tools=[check_risk, diff_with_previous, analyze_financials])
 search_agent  = Agent(model=model, tools=[search_contract_history])
 
@@ -492,8 +492,8 @@ search_agent  = Agent(model=model, tools=[search_contract_history])
 1. DOCX 업로드 → S3 저장 (버전별: {customer}/{id}/v{n}.docx)
    └─ python-docx로 텍스트 추출 (코드, 즉시)
 
-2. Parsing Agent 실행 (동기)
-   └─ 추출된 텍스트 → Bedrock Claude로 구조화 → Contract JSON
+2. DOCX 파싱 실행 (코드, 동기)
+   └─ python-docx로 텍스트·표 추출 → regex 규칙 기반 구조화 → Contract JSON
    └─ S3에 파싱 JSON 저장 → Bedrock KB 동기화 트리거
 
 3. Legal Review Agent 실행
@@ -518,11 +518,11 @@ search_agent  = Agent(model=model, tools=[search_contract_history])
 orchestrator = Agent(
     model=model,
     tools=[
-        parsing_agent.as_tool(name="parse_contract", description="DOCX 파싱 후 계약 JSON 반환"),
         legal_agent.as_tool(name="review_risks", description="리스크 탐지 + Diff 리스크 평가"),
         route_reviewers,  # 일반 함수 (Agent 아님, @tool 데코레이터)
     ]
 )
+# parse_contract()는 Agent 아닌 일반 함수로 파이프라인 앞단에서 직접 호출
 result = orchestrator("이 계약서를 분석하고 검토 라우팅까지 완료해줘")
 
 # Search Agent는 별도 엔드포인트에서 독립 호출
@@ -547,7 +547,7 @@ search_result = search_agent("A사와의 계약에서 배상 조항 변화 추�
 ## 9. 데모 시나리오 (해커톤 발표용)
 
 1. **[Upload]** 영업팀 담당자가 고객사 계약서 DOCX 업로드
-2. **[Parsing]** Parsing Agent가 조항 구조화 → JSON 변환 완료
+2. **[Parsing]** DOCX 파서(코드)가 텍스트 추출 + 규칙 기반 구조화 → Contract JSON 생성
 3. **[Risk]** Legal Review Agent가 HIGH 리스크 3건 탐지 → 리포트 생성
 4. **[Diff]** 이전 버전 대비 페널티 조항 변경 감지 → Diff 뷰 시각화 (코드 기반 + 리스크 영향 요약)
 5. **[Routing]** Rule Engine이 법무팀 + 팀장 2단계 검토 자동 라우팅

@@ -154,7 +154,7 @@ AWS Bedrock에서 Claude 3.5 Sonnet v2 (Agent 추론용)와 Titan Embeddings V2 
 3. 좌측 메뉴 → **Model access** (모델 액세스)
 4. **Manage model access** 버튼 클릭
 5. 아래 모델 2개를 찾아서 체크:
-   - `Anthropic` → `Claude 3.5 Sonnet v2` (anthropic.claude-3-5-sonnet-20240620-v1:0)
+   - `Anthropic` → `Claude 3.5 Sonnet v2` (anthropic.claude-3-5-sonnet-20241022-v2:0)
    - `Amazon` → `Titan Text Embeddings V2` (amazon.titan-embed-text-v2:0)
 6. **Save changes** 클릭
 7. 상태가 `Access granted` 로 변할 때까지 대기 (보통 즉시~수 분)
@@ -164,7 +164,7 @@ AWS Bedrock에서 Claude 3.5 Sonnet v2 (Agent 추론용)와 Titan Embeddings V2 
 ### 검증
 
 ```bash
-aws bedrock list-foundation-models --region ap-northeast-2 --query "modelSummaries[?modelId=='anthropic.claude-3-5-sonnet-20240620-v1:0'].{id:modelId,status:modelLifecycle.status}" --output table
+aws bedrock list-foundation-models --region ap-northeast-2 --query "modelSummaries[?modelId=='anthropic.claude-3-5-sonnet-20241022-v2:0'].{id:modelId,status:modelLifecycle.status}" --output table
 ```
 
 > 예상 출력: modelId가 ACTIVE 상태
@@ -301,7 +301,7 @@ DYNAMODB_TABLE_WORKFLOW=cas-workflow-steps
 DYNAMODB_TABLE_PROMPTS=cas-prompt-templates
 
 # === Bedrock ===
-BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20240620-v1:0
+BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
 BEDROCK_EMBEDDING_MODEL_ID=amazon.titan-embed-text-v2:0
 
 # === Bedrock Knowledge Base ===
