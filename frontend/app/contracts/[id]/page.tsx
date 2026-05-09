@@ -274,12 +274,15 @@ export default function ContractDetailPage() {
                         '계약일':      text.entities.contract_date,
                         '계약금액':    text.entities.total_amount,
                         '계약기간':    text.entities.contract_period,
-                      }).map(([l, v]) => v && (
-                        <div key={l} style={{ padding:'8px 10px', backgroundColor:'#fff', borderRadius:5, border:'1px solid #e5e7eb' }}>
-                          <p style={{ fontSize:10, color:'#9ca3af', marginBottom:3 }}>{l}</p>
-                          <p style={{ fontSize:12, color:'#111827', fontWeight:500 }}>{v as string}</p>
-                        </div>
-                      ))}
+                      }).map(([l, v]) => {
+                        const display = typeof v === 'object' && v !== null ? (v as { name: string }).name : v;
+                        return display ? (
+                          <div key={l} style={{ padding:'8px 10px', backgroundColor:'#fff', borderRadius:5, border:'1px solid #e5e7eb' }}>
+                            <p style={{ fontSize:10, color:'#9ca3af', marginBottom:3 }}>{l}</p>
+                            <p style={{ fontSize:12, color:'#111827', fontWeight:500 }}>{display}</p>
+                          </div>
+                        ) : null;
+                      })}
                     </div>
                   </div>
 

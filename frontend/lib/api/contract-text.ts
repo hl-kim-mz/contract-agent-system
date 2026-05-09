@@ -21,8 +21,8 @@ export interface ContractText {
   raw_text_preview: string; // 상단 요약 텍스트 (계약서 앞부분)
   clauses: ParsedClause[];
   entities: {
-    party_a: string | null;
-    party_b: string | null;
+    party_a: string | { role?: string; name: string; representative?: string | null } | null;
+    party_b: string | { role?: string; name: string; representative?: string | null } | null;
     contract_date: string | null;
     total_amount: string | null;
     contract_period: string | null;
