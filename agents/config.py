@@ -20,7 +20,7 @@ def get_sonnet():
     if provider == "bedrock":
         return BedrockModel(
             model_id=os.getenv(
-                "SONNET_MODEL_ID", "anthropic.claude-sonnet-4-20250514"
+                "SONNET_MODEL_ID", "apac.anthropic.claude-sonnet-4-20250514-v1:0"
             ),
             region_name=os.getenv("AWS_REGION", "ap-northeast-2"),
             temperature=0.3,
@@ -40,7 +40,7 @@ def get_haiku():
     if provider == "bedrock":
         return BedrockModel(
             model_id=os.getenv(
-                "HAIKU_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0"
+                "HAIKU_MODEL_ID", "ap.anthropic.claude-haiku-4-5-20251001-v1:0"
             ),
             region_name=os.getenv("AWS_REGION", "ap-northeast-2"),
             temperature=0.2,
