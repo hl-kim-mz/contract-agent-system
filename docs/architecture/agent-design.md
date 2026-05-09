@@ -74,6 +74,7 @@ orchestrator = Agent(
 | 특정 조항 리스크 질의 | RiskAgent 단독 | 단일 |
 | 과거 계약 검색 | SearchAgent | 단일 |
 | 사내 규정 조회 | MCP Client | 단일 |
+| HIGH 리스크 or 에스컬레이션 | RiskAgent → LegalReviewAgent | 순차 |
 | 복합 질의 | 판단에 따라 복수 Agent | 자율 |
 
 ---
@@ -84,8 +85,8 @@ orchestrator = Agent(
 
 | 속성 | 값 |
 |------|-----|
-| 모델 | Claude Haiku (anthropic.claude-haiku-4-20250414) |
-| 도구 | extract_docx_text |
+| 모델 | Claude Haiku (anthropic.claude-haiku-4-5-20251001-v1:0, ap-northeast-2) |
+| 도구 | 없음 (LLM 기반 구조화) |
 | 입력 | DOCX 파서 추출 결과 (원문 텍스트 + 표) |
 | 출력 | Contract JSON |
 
@@ -221,7 +222,53 @@ orchestrator = Agent(
 
 ---
 
-### 2-5. MCP Client (mcp-server-sqlite)
+### 2-5. LegalReviewAgent (Haiku)
+
+**역할**: Risk Report를 받아 법무팀 관점의 최종 검토 의견서 작성 및 승인/반려 권고
+
+| 속성 | 값 |
+|------|-----|
+| 모델 | Claude Haiku (anthropic.claude-haiku-4-5-20251001-v1:0, ap-northeast-2) |
+| 도구 | 없음 (LLM 기반) |
+| 입력 | Risk Report JSON |
+| 출력 | Legal Review Opinion JSON |
+
+**출력 스키마: Legal Review Opinion**
+
+```json
+{
+  "review_id": "uuid",
+  "reviewed_at": "ISO8601",
+  "recommendation": "APPROVE | REJECT | NEGOTIATE",
+  "legal_opinion": "법무팀 종합 의견 (1~3문장)",
+  "negotiation_points": [
+    {
+      "clause_id": "clause_001",
+      "issue": "문제 조항 요약",
+      "suggested_revision": "수정 권고안"
+    }
+  ],
+  "escalation_required": true,
+  "escalation_reason": "에스컬레이션 사유 (없으면 null)"
+}
+```
+
+**호출 조건**: overall_risk = HIGH 또는 escalation_required = true인 경우 Orchestrator가 자동 호출
+
+```python
+from agents.config import get_haiku
+from strands import Agent
+
+legal_review_agent = Agent(
+    model=get_haiku(),
+    system_prompt="법무팀 계약 검토 전문가 — Risk Report 기반 승인/반려/협상 권고",
+    tools=[],
+)
+```
+
+---
+
+### 2-6. MCP Client (mcp-server-sqlite)
 
 **역할**: 사내 컴플라이언스 규정 DB Mock 연동
 

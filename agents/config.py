@@ -31,7 +31,7 @@ def get_haiku():
     provider = os.getenv("MODEL_PROVIDER", "groq")
     if provider == "bedrock":
         return BedrockModel(
-            model_id="anthropic.claude-3-5-haiku-20241022-v1:0",
+            model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
             region_name="ap-northeast-2",
             streaming=True,
             **_guardrail_kwargs(),
