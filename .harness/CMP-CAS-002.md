@@ -1,4 +1,4 @@
-# CMP-CAS-002 — Legal Review Agent 컴포넌트 명세
+# CMP-CAS-002 — Risk Agent 컴포넌트 명세
 
 > 문서 타입: CMP (컴포넌트)
 > 도메인: CAS (Contract Agent System)
@@ -63,7 +63,7 @@ def assess_financial_impact(clause: dict, contract: dict) -> str:
     """계약 금액 기반 해당 조항의 손익 영향 정성 평가 반환"""
     ...
 
-legal_agent = Agent(
+risk_agent = Agent(
     model=model,
     tools=[detect_risk_patterns, assess_financial_impact],
     name="legal_review_agent",
@@ -107,7 +107,7 @@ legal_agent = Agent(
 ## 7. as_tool 등록 (Orchestrator용)
 
 ```python
-legal_agent.as_tool(
+risk_agent.as_tool(
     name="review_risks",
     description="리스크 조항 탐지 및 손익 분석"
 )

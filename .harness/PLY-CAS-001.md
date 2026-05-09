@@ -70,7 +70,7 @@
 | 파일 업로드 | 지원 형식 아님 (DOCX 외) | 400 에러 반환, 업로드 차단 |
 | 파일 업로드 | 10MB 초과 | 400 에러 반환, 업로드 차단 |
 | Parsing Agent | 텍스트 추출 실패 | `status = ERROR`, 사용자에게 오류 메시지 표시 |
-| Legal Review Agent | Bedrock API 타임아웃 | `status = ERROR`, 재시도 안내 메시지 표시 |
+| Risk Agent | Bedrock API 타임아웃 | `status = ERROR`, 재시도 안내 메시지 표시 |
 | Workflow Agent | 라우팅 실패 | `status = ERROR`, 수동 지정 안내 |
 | 공통 | Agent 예외 발생 | 해당 계약서 `status = ERROR` 기록, 다른 계약서 영향 없음 |
 

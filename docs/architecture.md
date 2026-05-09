@@ -29,7 +29,7 @@
 ┌──────────────┐ ┌─────────────────────────┐ ┌──────────────────┐
 │  DOCX 파서   │ │  Strands Agent SDK       │ │  Rule Engine     │
 │  (코드 기반) │ │  ┌───────────────────┐  │ │  (코드 기반)     │
-│              │ │  │ Legal Review Agent│  │ │                  │
+│              │ │  │   Risk Agent      │  │ │                  │
 │ python-docx  │ │  │  ├─ check_risk    │  │ │ 리스크 레벨 ×   │
 │ + regex      │ │  │  ├─ diff_prev     │  │ │ 계약 유형 ×     │
 │              │ │  │  └─ analyze_fin   │  │ │ 금액 조건 →     │
@@ -76,9 +76,9 @@
 | **조항 단위 분리** | 코드 (python-docx 스타일) | "제N조" 헤딩 기준 — 확정적 |
 | **버전 간 Diff 비교** | 코드 (deepdiff) | JSON 구조 비교 — 확정적, 빠름 |
 | **검토 라우팅 결정** | 코드 (Rule Engine, if/else) | 리스크 레벨 × 금액 조건 매트릭스 — 일관성 필요 |
-| **리스크 조항 탐지** | **AI (Legal Review Agent)** | 법적 맥락 이해, MZC 기준 대비 판단 — AI 필수 |
-| **손익·재무 리스크 분석** | **AI (Legal Review Agent)** | 비정형 금융 조건 해석 — AI 필수 |
-| **Diff 리스크 영향 요약** | **AI (Legal Review Agent)** | 변경 의미의 법적 해석 — AI 필수 |
+| **리스크 조항 탐지** | **AI (Risk Agent)** | 법적 맥락 이해, MZC 기준 대비 판단 — AI 필수 |
+| **손익·재무 리스크 분석** | **AI (Risk Agent)** | 비정형 금융 조건 해석 — AI 필수 |
+| **Diff 리스크 영향 요약** | **AI (Risk Agent)** | 변경 의미의 법적 해석 — AI 필수 |
 | **자연어 계약 히스토리 검색** | **AI (Search Agent)** | 의미 기반 유사 검색 + 답변 생성 — AI 필수 |
 
 ---
@@ -92,7 +92,7 @@
 orchestrator = Agent(
     model=get_model(),
     tools=[
-        legal_agent.as_tool(
+        risk_agent.as_tool(
             name="review_contract_risks",
             description="계약서 JSON을 받아 리스크 분석 + Diff 평가 수행"
         ),
@@ -100,7 +100,7 @@ orchestrator = Agent(
     ]
 )
 
-legal_agent  = Agent(model=model, tools=[check_risk, diff_with_previous, analyze_financials])
+risk_agent  = Agent(model=model, tools=[check_risk, diff_with_previous, analyze_financials])
 search_agent = Agent(model=model, tools=[search_contract_history])
 ```
 
@@ -110,7 +110,7 @@ search_agent = Agent(model=model, tools=[search_contract_history])
      ├──→ parse_contract()          ← 코드 함수 (Agent 아님)
      │         └─ Contract JSON 생성
      │
-     ├──→ legal_agent.as_tool()     ← Sub-Agent (Strands Agent-as-Tool)
+     ├──→ risk_agent.as_tool()     ← Sub-Agent (Strands Agent-as-Tool)
      │         ├─ check_risk()      ← LLM tool: 리스크 탐지
      │         ├─ diff_with_previous() ← 코드+LLM 혼합 tool
      │         └─ analyze_financials() ← LLM tool: 재무 리스크
@@ -161,7 +161,7 @@ search_agent = Agent(model=model, tools=[search_contract_history])
 
 ---
 
-### 3-3. Legal Review Agent (AI Agent)
+### 3-3. Risk Agent (AI Agent)
 
 **역할**: Contract JSON + MZC 기준 프롬프트 → Risk Report JSON
 
@@ -284,7 +284,7 @@ S3 (*.json 파싱 결과)
    │                 │                     │─ DynamoDB INSERT ───→ │ DB
    │                 │                     │─ KB Sync 트리거 ─────→ │ KB
    │                 │                     │                      │
-   │                 │─ legal_agent() ─────→│                      │
+   │                 │─ risk_agent() ─────→│                      │
    │                 │   (Strands SDK)      │─ check_risk          │
    │                 │                     │   (LLM, ~30s)        │
    │                 │                     │─ diff_with_previous  │
@@ -416,7 +416,7 @@ cas-contracts ──1:1──→ cas-risk-reports
      │
      └──1:N──→ cas-workflow-steps
 
-cas-prompt-templates ──(조회)──→ Legal Review Agent 실행 시
+cas-prompt-templates ──(조회)──→ Risk Agent 실행 시
                                   system_prompt 주입
 
 S3 ──(자동 동기화)──→ Bedrock KB ──(벡터 검색)──→ Search Agent

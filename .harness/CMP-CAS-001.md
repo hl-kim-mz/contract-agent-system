@@ -9,7 +9,7 @@
 ## 1. 역할
 
 DOCX 파일을 읽어 계약서 구조화 JSON으로 변환한다.
-Orchestrator Agent로부터 호출되며, 결과는 Legal Review Agent와 Diff Agent에 전달된다.
+Orchestrator Agent로부터 호출되며, 결과는 Risk Agent와 Diff Agent에 전달된다.
 
 ---
 

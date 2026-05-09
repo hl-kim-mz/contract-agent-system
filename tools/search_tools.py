@@ -21,7 +21,7 @@ def search_history(query: str) -> dict:
             "type": "KNOWLEDGE_BASE",
             "knowledgeBaseConfiguration": {
                 "knowledgeBaseId": os.getenv("BEDROCK_KB_ID"),
-                "modelArn": f"arn:aws:bedrock:{region}::foundation-model/anthropic.claude-3-5-sonnet-20241022-v2:0",
+                "modelArn": f"arn:aws:bedrock:{region}:359469026743:inference-profile/apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
             },
         },
     )

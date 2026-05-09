@@ -1,4 +1,4 @@
-# Legal Review Agent — 시스템 프롬프트
+# Risk Agent — 시스템 프롬프트
 
 > **용도**: Contract JSON → Risk Report JSON (MZC 기준 9가지 리스크 탐지)  
 > **투입 시점**: DOCX 파싱 완료 후, 리스크 분석 단계  
@@ -352,17 +352,17 @@ Risk Report JSON을 반환하는 것이 유일한 역할입니다.
 ## 코드 연동 방법
 
 ```python
-# agents/legal_agent.py
+# agents/risk_agent.py
 import json
 from pathlib import Path
 from strands import Agent, tool
 from models import get_model
 
-PROMPT_PATH = Path(__file__).parent.parent / "docs/prompts/legal-agent.md"
+PROMPT_PATH = Path(__file__).parent.parent / "docs/prompts/risk-agent.md"
 
 
-def load_system_prompt() -> str:
-    """docs/prompts/legal-agent.md에서 System Prompt 블록 추출"""
+def load_risk_prompt() -> str:
+    """docs/prompts/risk-agent.md에서 System Prompt 블록 추출"""
     content = PROMPT_PATH.read_text(encoding="utf-8")
     start = content.find("```\n당신은 메가존클라우드")
     end   = content.find("\n```\n\n---\n\n## 입력 예시")
@@ -420,8 +420,8 @@ def analyze_financials(financials: dict) -> str:
     return str(agent(prompt))
 
 
-# --- Legal Review Agent (Strands SDK) ---
-legal_agent = Agent(
+# --- Risk Agent (Strands SDK) ---
+risk_agent = Agent(
     model=get_model(),
     system_prompt=load_system_prompt(),
     tools=[check_risk, diff_with_previous, analyze_financials],

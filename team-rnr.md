@@ -78,7 +78,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 - [ ] Python 환경 세팅 (`pip install -r dependencies.txt`)
 - [ ] [Groq API Key 발급](https://console.groq.com) → `.env`에 `GROQ_API_KEY=` 입력
 - [ ] `.env`에 `MODEL_PROVIDER=groq` 설정 후 로컬 Agent 동작 검증
-- [ ] Parsing Agent + Legal Review Agent 구현 완료
+- [ ] Parsing Agent + Risk Agent 구현 완료
 - [ ] FastAPI 기본 엔드포인트 완성
 
 **해커톤 당일**
@@ -98,7 +98,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 
 **해커톤 전 (사전 준비)**
 - [ ] 샘플 계약서 DOCX 2종 준비 (버전 1 + 버전 2, Diff 시연용)
-- [ ] Legal Review Agent 프롬프트 설계 (리스크 탐지 기준 문서화)
+- [ ] Risk Agent 프롬프트 설계 (리스크 탐지 기준 문서화)
 - [ ] 발표 자료 초안 + 데모 시나리오 스크립트 작성
 
 **해커톤 당일**
@@ -189,6 +189,6 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 
 | 우선순위 | 기능 | 이유 |
 |---------|------|------|
-| **P0 필수** | Parsing + Legal Review Agent + 리스크 리포트 UI | 핵심 가치 증명 |
+| **P0 필수** | Parsing + Risk Agent + 리스크 리포트 UI | 핵심 가치 증명 |
 | **P1 권장** | Workflow Agent + 승인 Mock UI | 완결성 |
 | **P2 선택** | Diff Agent | 시간 여유 시 구현 |

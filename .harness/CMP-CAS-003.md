@@ -8,7 +8,7 @@
 
 ## 1. 역할
 
-Legal Review Agent 출력(Risk Report)을 기반으로 부서별 검토 라우팅을 자동 생성한다.
+Risk Agent 출력(Risk Report)을 기반으로 부서별 검토 라우팅을 자동 생성한다.
 PLY-CAS-001 §3 라우팅 규칙을 적용하여 WorkflowStep 목록을 DB에 저장한다.
 
 ---

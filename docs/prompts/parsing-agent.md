@@ -3,7 +3,7 @@
 > **용도**: 계약서 원문 텍스트 → Contract JSON 변환  
 > **투입 시점**: python-docx 텍스트 추출 완료 후, 구조화 단계 (코드 regex 실패 시 폴백 또는 보완)  
 > **출력**: `docs/requirements.md` Contract JSON 스키마 준수  
-> **연계**: 출력 JSON은 Legal Review Agent의 직접 입력으로 사용됨 (legal-agent.md v1.1 참조)
+> **연계**: 출력 JSON은 Risk Agent의 직접 입력으로 사용됨 (risk-agent.md v1.1 참조)
 
 ---
 
@@ -20,7 +20,7 @@
 - 원문에 명시된 내용만 추출합니다. 추정하거나 보완하지 않습니다.
 - 원문에 없는 필드는 반드시 null로 반환합니다. 임의로 채우지 마십시오.
 - 출력은 반드시 유효한 JSON만 반환합니다. 설명, 주석, 마크다운 코드펜스 없이 JSON만 출력합니다.
-- 이 파싱 결과는 Legal Review Agent에 그대로 입력됩니다. clauses[].type과 financials 필드의 정확성이 리스크 탐지 품질에 직결됩니다.
+- 이 파싱 결과는 Risk Agent에 그대로 입력됩니다. clauses[].type과 financials 필드의 정확성이 리스크 탐지 품질에 직결됩니다.
 
 ---
 
@@ -132,7 +132,7 @@ delay_penalty_rate: 지체상금율 Float. 단위 = %/일 (퍼센트/일).
   content:   해당 조항의 원문 텍스트 전체 (①②③ 하위 항 포함, 줄바꿈 포함)
   paragraph: 문서 내 조항 순번 (1부터 시작, 헤딩 기준)
 
-type 분류 기준 (Legal Review Agent 리스크 탐지 연계):
+type 분류 기준 (Risk Agent 리스크 탐지 연계):
 
   | type           | 해당 키워드·내용                                      | 연계 리스크 유형 |
   |----------------|------------------------------------------------------|----------------|
