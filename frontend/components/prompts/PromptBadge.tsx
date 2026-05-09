@@ -17,16 +17,5 @@ export default function PromptBadge({ contractType, size = 'sm' }: Props) {
   const key = contractType ?? 'default';
   const cfg = CFG[key] ?? CFG['default'];
   const compact = size === 'sm';
-  return (
-    <DataPill
-      style={{
-        minWidth: compact ? 52 : 56,
-        minHeight: compact ? 20 : 22,
-        fontSize: compact ? 10 : 11,
-        fontWeight: 500,
-      }}
-    >
-      {cfg.label}
-    </DataPill>
-  );
+  return <DataPill size={compact ? 'sm' : 'md'}>{cfg.label}</DataPill>;
 }

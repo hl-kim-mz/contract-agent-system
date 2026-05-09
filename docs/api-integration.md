@@ -3,6 +3,14 @@
 > 프론트엔드 ↔ 백엔드 연동 방법 및 feature별 API 매핑
 > **Mock → Real 전환**: `.env.local`의 `NEXT_PUBLIC_USE_MOCK=false`로 변경
 
+### 프로덕션 데모 (Vercel)
+
+| 항목 | URL |
+|------|-----|
+| 프론트엔드 | https://contract-agent-system.vercel.app/ |
+
+심사·데모 시 위 URL로 접속하면 됩니다. (기본값은 Mock 데이터; 백엔드를 붙일 경우 Vercel 프로젝트 환경 변수에 `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_USE_MOCK` 설정)
+
 ---
 
 ## 1. 환경 설정

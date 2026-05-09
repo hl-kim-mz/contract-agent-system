@@ -1,24 +1,46 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-/** 유형·리스크 등 테이블 배지 — 동일 규격·무테두리·중립 톤 */
+const sizes: Record<'sm' | 'md', CSSProperties> = {
+  /** 목록 테이블 유형·리스크·상태 */
+  sm: {
+    height: 16,
+    padding: '0 5px',
+    fontSize: 9,
+    lineHeight: '16px',
+    borderRadius: 2,
+  },
+  /** 상세 등 여유 있는 화면 */
+  md: {
+    height: 20,
+    padding: '0 6px',
+    fontSize: 10,
+    lineHeight: '20px',
+    borderRadius: 3,
+  },
+};
+
 const base: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   justifyContent: 'center',
   boxSizing: 'border-box',
-  minWidth: 52,
-  minHeight: 20,
-  padding: '0 6px',
-  fontSize: 10,
-  fontWeight: 600,
-  lineHeight: 1,
-  letterSpacing: '0.02em',
+  maxWidth: '100%',
+  fontWeight: 500,
+  letterSpacing: '0.01em',
+  whiteSpace: 'nowrap',
   color: '#4b5563',
   backgroundColor: '#f3f4f6',
-  borderRadius: 3,
   flexShrink: 0,
 };
 
-export default function DataPill({ children, style }: { children: ReactNode; style?: CSSProperties }) {
-  return <span style={{ ...base, ...style }}>{children}</span>;
+export default function DataPill({
+  children,
+  size = 'md',
+  style,
+}: {
+  children: ReactNode;
+  size?: 'sm' | 'md';
+  style?: CSSProperties;
+}) {
+  return <span style={{ ...base, ...sizes[size], ...style }}>{children}</span>;
 }

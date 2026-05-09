@@ -146,7 +146,7 @@ export default function ContractsPage() {
       >
         <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderTop: 'none', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
           {/* 컬럼 헤더 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 88px 88px 110px 90px 80px', padding: '10px 20px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: 11, fontWeight: 600, color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 72px 72px 88px 90px 80px', padding: '10px 20px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: 11, fontWeight: 600, color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             <span>계약서</span><span>고객사</span><span>유형</span>
             <span>리스크</span><span>상태</span><span>금액</span><span>업로드</span>
           </div>
@@ -162,7 +162,7 @@ export default function ContractsPage() {
             return (
               <div key={c.id}
                 onClick={() => router.push(`/contracts/${c.id}`)}
-                style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 88px 88px 110px 90px 80px', padding: '13px 20px', borderBottom: i < visible.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' }}
+                style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 72px 72px 88px 90px 80px', padding: '10px 20px', borderBottom: i < visible.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' }}
                 onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = '#f9fafb')}
                 onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent')}
               >
@@ -176,15 +176,14 @@ export default function ContractsPage() {
                 <PromptBadge contractType={c.contract_type} />
 
                 {parsing ? (
-                  <DataPill>분석</DataPill>
+                  <DataPill size="sm">분석</DataPill>
                 ) : risk ? (
-                  <DataPill>{risk.label}</DataPill>
+                  <DataPill size="sm">{risk.label}</DataPill>
                 ) : (
-                  <DataPill style={{ color: '#9ca3af', backgroundColor: '#fafafa' }}>—</DataPill>
+                  <DataPill size="sm" style={{ color: '#9ca3af', backgroundColor: '#fafafa' }}>—</DataPill>
                 )}
 
-                {/* 상태 */}
-                <span style={{ fontSize: 12, fontWeight: 500, color: st.color }}>{st.label}</span>
+                <DataPill size="sm" style={{ fontWeight: 500 }}>{st.label}</DataPill>
                 <span style={{ fontSize: 12, color: '#6b7280' }}>{formatAmount(c.total_amount)}</span>
                 <span style={{ fontSize: 11, color: '#9ca3af' }}>{formatRelativeTime(c.uploaded_at)}</span>
               </div>
