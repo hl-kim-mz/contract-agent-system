@@ -1,0 +1,20 @@
+# Agent SDK
+strands-agents>=1.36.0
+
+# LLM Providers
+boto3>=1.42.0
+litellm>=1.40.0
+groq>=0.9.0
+
+# Document parsing
+mammoth>=1.6.0
+pdfplumber>=0.11.0
+
+# Web API
+fastapi>=0.110.0
+uvicorn>=0.29.0
+
+# Data models / utils
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+python-multipart>=0.0.9
