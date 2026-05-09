@@ -8,11 +8,19 @@ def get_model():
     provider = os.getenv("MODEL_PROVIDER", "groq")
 
     if provider == "bedrock":
+        guardrail_id = os.getenv("BEDROCK_GUARDRAIL_ID")
+        guardrail_version = os.getenv("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
+        guardrail_cfg = (
+            {"guardrailIdentifier": guardrail_id, "guardrailVersion": guardrail_version}
+            if guardrail_id
+            else None
+        )
         return BedrockModel(
             model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
             region_name="ap-northeast-2",
             temperature=0.3,
             streaming=True,
+            guardrail_config=guardrail_cfg,
         )
 
     return LiteLLMModel(
