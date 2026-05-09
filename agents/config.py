@@ -8,10 +8,8 @@ def _guardrail_kwargs() -> dict:
     guardrail_ver = os.getenv("BEDROCK_GUARDRAIL_VERSION")
     if guardrail_id and guardrail_ver:
         return {
-            "guardrail_config": {
-                "guardrailIdentifier": guardrail_id,
-                "guardrailVersion": guardrail_ver,
-            }
+            "guardrail_id": guardrail_id,
+            "guardrail_version": guardrail_ver,
         }
     return {}
 

@@ -111,8 +111,8 @@ async def analyze_contract(
     uploaded_by: str = "demo_user",
 ):
     """DOCX 업로드 → AI 파싱 → 리스크 분석 → 법무 검토 → DynamoDB 저장"""
-    if not (file.filename.endswith(".docx") or file.filename.endswith(".pdf")):
-        raise HTTPException(status_code=400, detail="DOCX 또는 PDF 파일만 지원합니다")
+    if not file.filename.endswith(".docx"):
+        raise HTTPException(status_code=400, detail="DOCX 파일만 지원합니다")
 
     contract_id = str(uuid.uuid4())
     content = await file.read()

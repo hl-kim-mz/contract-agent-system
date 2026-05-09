@@ -3,7 +3,7 @@
 // API 함수 레이어 — Mock ↔ Real API 전환 포인트
 // ─────────────────────────────────────────────────────────────────
 
-export type ContractType = 'NDA' | 'MSA' | 'SI' | 'SLA' | 'Maintenance' | null;
+export type ContractType = 'NDA' | 'MSA' | 'SI' | 'SLA' | 'Maintenance' | 'Outsourcing' | null;
 
 export interface PromptTemplate {
   id: string;

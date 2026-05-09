@@ -15,22 +15,34 @@ def search_history(query: str) -> dict:
         검색 결과 + 생성된 답변
     """
     kb_id = os.getenv("BEDROCK_KB_ID")
+    if not kb_id:
+        return json.dumps({
+            "answer": "Knowledge Base가 설정되지 않았습니다 (BEDROCK_KB_ID 환경변수 필요)",
+            "sources": [],
+        }, ensure_ascii=False)
+
     region = os.getenv("AWS_REGION", "ap-northeast-2")
 
-    client = boto3.client("bedrock-agent-runtime", region_name=region)
-    response = client.retrieve_and_generate(
-        input={"text": query},
-        retrieveAndGenerateConfiguration={
-            "type": "KNOWLEDGE_BASE",
-            "knowledgeBaseConfiguration": {
-                "knowledgeBaseId": kb_id,
-                "modelArn": os.getenv(
-                    "KB_MODEL_ARN",
-                    f"arn:aws:bedrock:{region}::foundation-model/anthropic.claude-sonnet-4-20250514",
-                ),
+    try:
+        client = boto3.client("bedrock-agent-runtime", region_name=region)
+        response = client.retrieve_and_generate(
+            input={"text": query},
+            retrieveAndGenerateConfiguration={
+                "type": "KNOWLEDGE_BASE",
+                "knowledgeBaseConfiguration": {
+                    "knowledgeBaseId": kb_id,
+                    "modelArn": os.getenv(
+                        "KB_MODEL_ARN",
+                        f"arn:aws:bedrock:{region}::foundation-model/anthropic.claude-sonnet-4-20250514",
+                    ),
+                },
             },
-        },
-    )
+        )
+    except Exception as e:
+        return json.dumps({
+            "answer": f"Knowledge Base 검색 실패: {e}",
+            "sources": [],
+        }, ensure_ascii=False)
 
     output = response.get("output", {}).get("text", "")
     sources = [
