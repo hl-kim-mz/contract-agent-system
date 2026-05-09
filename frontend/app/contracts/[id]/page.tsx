@@ -10,6 +10,7 @@ import { searchHistory, type SearchResult }                             from '@/
 import { getContractText, CLAUSE_TYPE_LABEL, type ContractText }        from '@/lib/api/contract-text';
 import CommentThread                                                    from '@/components/contracts/CommentThread';
 import PromptBadge                                                      from '@/components/prompts/PromptBadge';
+import DataPill                                                         from '@/components/ui/DataPill';
 import type { ContractType }                                            from '@/lib/api/prompts';
 
 type Tab = 'report' | 'text' | 'diff' | 'workflow' | 'comments';
@@ -76,7 +77,7 @@ export default function ContractDetailPage() {
     ['text',     `원문 보기${text ? ` (${text.clauses.length}조)` : ''}`],
     ['diff',     diff ? `버전 비교 v${diff.from_version}→v${diff.to_version}` : '버전 비교'],
     ['workflow', `워크플로우 (${steps.length}단계)`],
-    ['comments', '💬 코멘트'],
+    ['comments', '코멘트'],
   ];
 
   return (
@@ -100,15 +101,10 @@ export default function ContractDetailPage() {
           <h1 style={{ fontSize:16, fontWeight:700, color:'#111827', margin:0 }}>{contract.file_name}</h1>
           <span style={{ fontSize:12, color:'#9ca3af', padding:'1px 6px', backgroundColor:'#f3f4f6', borderRadius:10 }}>v{contract.version}</span>
           {overallCfg && (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 12px', fontSize:12, fontWeight:700, borderRadius:20, color:overallCfg.color, backgroundColor:overallCfg.bg, border:`1px solid ${overallCfg.border}` }}>
-              <span style={{ width:6, height:6, borderRadius:'50%', backgroundColor:overallCfg.color, display:'inline-block' }}/>
-              {overallCfg.label} 리스크
-            </span>
+            <DataPill style={{ minWidth: 72, fontSize: 11, fontWeight: 600 }}>{overallCfg.label} 리스크</DataPill>
           )}
           {contract.status === 'REJECTED' && (
-            <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 12px', fontSize:12, fontWeight:700, borderRadius:20, color:'#dc2626', backgroundColor:'#fef2f2', border:'1px solid #fecaca' }}>
-              반려됨
-            </span>
+            <DataPill style={{ minWidth: 56, fontSize: 11, fontWeight: 600 }}>반려</DataPill>
           )}
           <div style={{ flex:1 }}/>
           <span style={{ fontSize:11, color:'#9ca3af' }}>{contract.uploaded_by} · {new Date(contract.uploaded_at).toLocaleDateString('ko-KR')}</span>
@@ -162,28 +158,24 @@ export default function ContractDetailPage() {
                   <EmptyState text="분석 결과가 없습니다." />
                 ) : <>
                   {/* 전체 리스크 요약 카드 */}
-                  <div style={{ border:`1.5px solid ${overallCfg?.border}`, borderRadius:10, overflow:'hidden' }}>
-                    <div style={{ backgroundColor:overallCfg?.bg, padding:'16px 20px', display:'flex', alignItems:'flex-start', gap:16 }}>
-                      <div style={{ width:48, height:48, borderRadius:10, backgroundColor:overallCfg?.color+'20', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>
-                        {report.overall_risk==='HIGH' ? '🔴' : report.overall_risk==='MEDIUM' ? '🟡' : '🟢'}
+                  <div style={{ border:'1px solid #e5e7eb', borderRadius:10, overflow:'hidden' }}>
+                    <div style={{ backgroundColor:'#fafafa', padding:'16px 20px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, flexWrap:'wrap' }}>
+                        {overallCfg && <DataPill style={{ fontSize:11 }}>{overallCfg.label}</DataPill>}
+                        <span style={{ fontSize:14, fontWeight:700, color:'#111827' }}>종합 평가</span>
+                        <span style={{ fontSize:11, color:'#6b7280' }}>
+                          {report.escalation_required ? '에스컬레이션 필요' : '담당자 승인 가능'}
+                        </span>
                       </div>
-                      <div style={{ flex:1 }}>
-                        <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:6 }}>
-                          <span style={{ fontSize:14, fontWeight:700, color:overallCfg?.color }}>{overallCfg?.label} 리스크</span>
-                          <span style={{ fontSize:11, color:overallCfg?.color, padding:'2px 8px', backgroundColor:overallCfg?.color+'15', borderRadius:10, border:`1px solid ${overallCfg?.color}30` }}>
-                            {report.escalation_required ? '⚡ 에스컬레이션 필요' : '담당자 승인 가능'}
-                          </span>
-                        </div>
-                        <p style={{ fontSize:13, color:'#374151', lineHeight:1.7, margin:0 }}>{report.risk_summary}</p>
-                      </div>
+                      <p style={{ fontSize:13, color:'#374151', lineHeight:1.7, margin:0 }}>{report.risk_summary}</p>
                     </div>
                     {report.key_concerns.length > 0 && (
-                      <div style={{ padding:'14px 20px', borderTop:`1px solid ${overallCfg?.border}`, backgroundColor:'#fff' }}>
+                      <div style={{ padding:'14px 20px', borderTop:'1px solid #e5e7eb', backgroundColor:'#fff' }}>
                         <p style={{ fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:8 }}>핵심 우려사항</p>
                         <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                           {report.key_concerns.map((c, i) => (
                             <div key={i} style={{ display:'flex', alignItems:'flex-start', gap:8, fontSize:13, color:'#374151' }}>
-                              <span style={{ color:overallCfg?.color, fontWeight:700, fontSize:12, marginTop:1, flexShrink:0 }}>{i+1}.</span>
+                              <span style={{ color:'#9ca3af', fontWeight:600, fontSize:12, marginTop:1, flexShrink:0 }}>{i+1}.</span>
                               <span style={{ lineHeight:1.5 }}>{c}</span>
                             </div>
                           ))}
@@ -217,7 +209,11 @@ export default function ContractDetailPage() {
                           const cnt = report.clause_risks.filter(r => r.risk_level === lvl).length;
                           const cfg = RISK_LEVEL_CFG[lvl];
                           if (!cnt) return null;
-                          return <span key={lvl} style={{ fontSize:11, padding:'2px 8px', borderRadius:10, color:cfg.color, backgroundColor:cfg.bg, border:`1px solid ${cfg.border}` }}>{cfg.label} {cnt}</span>;
+                          return (
+                            <DataPill key={lvl} style={{ minWidth: 48, fontSize: 10 }}>
+                              {cfg.label} {cnt}
+                            </DataPill>
+                          );
                         })}
                       </div>
                     </div>
@@ -226,12 +222,12 @@ export default function ContractDetailPage() {
                         const cfg = RISK_LEVEL_CFG[risk.risk_level];
                         const open = expanded === risk.clause_id;
                         return (
-                          <div key={risk.clause_id} style={{ border:`1px solid ${open ? cfg.border : '#e5e7eb'}`, borderLeft:`3px solid ${cfg.color}`, borderRadius:7, overflow:'hidden', backgroundColor:'#fff', transition:'border-color 0.15s' }}>
+                          <div key={risk.clause_id} style={{ border:'1px solid #e5e7eb', borderRadius:7, overflow:'hidden', backgroundColor:'#fff' }}>
                             <button onClick={() => setExpanded(open ? null : risk.clause_id)}
                               style={{ display:'flex', alignItems:'center', width:'100%', padding:'12px 16px', gap:10, cursor:'pointer', background:'none', border:'none', textAlign:'left' }}
                               onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor='#fafafa')}
                               onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor='transparent')}>
-                              <span style={{ padding:'2px 8px', fontSize:11, fontWeight:700, borderRadius:4, color:cfg.color, backgroundColor:cfg.bg, border:`1px solid ${cfg.border}`, flexShrink:0 }}>{cfg.label}</span>
+                              <DataPill style={{ flexShrink:0 }}>{cfg.label}</DataPill>
                               <span style={{ fontSize:13, fontWeight:500, color:'#111827', flex:1 }}>{RISK_TYPE_LABEL[risk.risk_type] ?? risk.risk_type}</span>
                               <span style={{ fontSize:11, color:'#9ca3af', padding:'1px 6px', backgroundColor:'#f3f4f6', borderRadius:6, marginRight:4 }}>{risk.clause_id}</span>
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ transform:open?'rotate(180deg)':'none', transition:'0.15s', flexShrink:0 }}><polyline points="6 9 12 15 18 9"/></svg>
@@ -239,9 +235,9 @@ export default function ContractDetailPage() {
                             {open && (
                               <div style={{ padding:'0 16px 16px', borderTop:'1px solid #f3f4f6' }}>
                                 {[
-                                  { label:'위험 근거', text:risk.reason, accent:'#374151', bg:'#fafafa' },
-                                  { label:'수정 권고안', text:risk.recommendation, accent:'#1d4ed8', bg:'#eff6ff' },
-                                  { label:'재무 영향', text:risk.financial_impact, accent:'#d97706', bg:'#fffbeb' },
+                                  { label:'위험 근거', text:risk.reason, accent:'#6b7280', bg:'#fafafa' },
+                                  { label:'수정 권고안', text:risk.recommendation, accent:'#6b7280', bg:'#fafafa' },
+                                  { label:'재무 영향', text:risk.financial_impact, accent:'#6b7280', bg:'#fafafa' },
                                 ].map(s => (
                                   <div key={s.label} style={{ marginTop:12, padding:'10px 12px', backgroundColor:s.bg, borderRadius:6 }}>
                                     <p style={{ fontSize:10, fontWeight:700, color:s.accent, textTransform:'uppercase', letterSpacing:'0.06em', marginBottom:5 }}>{s.label}</p>
@@ -297,21 +293,21 @@ export default function ContractDetailPage() {
                   <div>
                     <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
                       <h3 style={{ fontSize:14, fontWeight:600, color:'#111827', margin:0 }}>조항 목록 ({text.clauses.length}개)</h3>
-                      <span style={{ fontSize:11, color:'#9ca3af' }}>리스크 있는 조항은 색상으로 표시됩니다</span>
+                      <span style={{ fontSize:11, color:'#9ca3af' }}>리스크 조항에 배지가 표시됩니다</span>
                     </div>
                     <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
                       {text.clauses.map(clause => {
                         const riskCfg = clause.has_risk && clause.risk_level ? RISK_LEVEL_CFG[clause.risk_level] : null;
                         const open = expanded === `text_${clause.id}`;
                         return (
-                          <div key={clause.id} style={{ border:`1px solid ${riskCfg ? riskCfg.border : '#e5e7eb'}`, borderLeft:`3px solid ${riskCfg ? riskCfg.color : '#e5e7eb'}`, borderRadius:7, overflow:'hidden', backgroundColor:'#fff' }}>
+                          <div key={clause.id} style={{ border:'1px solid #e5e7eb', borderRadius:7, overflow:'hidden', backgroundColor:'#fff' }}>
                             <button onClick={() => setExpanded(open ? null : `text_${clause.id}`)}
                               style={{ display:'flex', alignItems:'center', width:'100%', padding:'11px 14px', gap:10, cursor:'pointer', background:'none', border:'none', textAlign:'left' }}
                               onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor='#fafafa')}
                               onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor='transparent')}>
                               <span style={{ fontSize:13, fontWeight:600, color:'#111827', flex:1 }}>{clause.title}</span>
                               <span style={{ fontSize:10, color:'#9ca3af', padding:'1px 6px', backgroundColor:'#f3f4f6', borderRadius:6 }}>{CLAUSE_TYPE_LABEL[clause.type]}</span>
-                              {riskCfg && <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:4, color:riskCfg.color, backgroundColor:riskCfg.bg, border:`1px solid ${riskCfg.border}` }}>{riskCfg.label}</span>}
+                              {riskCfg && <DataPill style={{ minWidth: 44, minHeight: 18, fontSize: 10 }}>{riskCfg.label}</DataPill>}
                               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ transform:open?'rotate(180deg)':'none', flexShrink:0 }}><polyline points="6 9 12 15 18 9"/></svg>
                             </button>
                             {open && (
@@ -340,7 +336,7 @@ export default function ContractDetailPage() {
                     </div>
                     <div style={{ textAlign:'center', padding:'0 16px', borderRight:'1px solid #e5e7eb' }}>
                       <p style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>리스크 변화</p>
-                      <p style={{ fontSize:14, fontWeight:700, color:'#dc2626' }}>{diff.risk_change}</p>
+                      <p style={{ fontSize:14, fontWeight:700, color:'#111827' }}>{diff.risk_change}</p>
                     </div>
                     <div style={{ flex:1 }}>
                       <p style={{ fontSize:10, color:'#9ca3af', marginBottom:4 }}>변경 요약</p>
@@ -351,9 +347,9 @@ export default function ContractDetailPage() {
                   {/* 범례 */}
                   <div style={{ display:'flex', gap:8 }}>
                     {Object.entries(DIFF_COLOR).map(([k, c]) => (
-                      <span key={k} style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, color:c.color, padding:'3px 10px', borderRadius:20, backgroundColor:c.bg, border:`1px solid ${c.border}`, fontWeight:500 }}>
+                      <DataPill key={k} style={{ minWidth: 56, fontSize: 10, fontWeight: 500 }}>
                         {k==='ADDED' ? '+' : k==='REMOVED' ? '−' : k==='MODIFIED' ? '~' : '='} {c.label}
-                      </span>
+                      </DataPill>
                     ))}
                   </div>
 
@@ -363,44 +359,44 @@ export default function ContractDetailPage() {
                       const cfg = DIFF_COLOR[ch.change_type];
                       const open = expanded === `diff_${ch.clause_id}`;
                       return (
-                        <div key={ch.clause_id} style={{ border:`1px solid ${cfg.border}`, borderLeft:`4px solid ${cfg.color}`, borderRadius:7, overflow:'hidden', backgroundColor:'#fff' }}>
+                        <div key={ch.clause_id} style={{ border:'1px solid #e5e7eb', borderRadius:7, overflow:'hidden', backgroundColor:'#fff' }}>
                           <button onClick={() => setExpanded(open ? null : `diff_${ch.clause_id}`)}
                             style={{ display:'flex', alignItems:'center', width:'100%', padding:'12px 16px', gap:10, cursor:'pointer', background:'none', border:'none', textAlign:'left' }}
                             onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor='#fafafa')}
                             onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor='transparent')}>
-                            <span style={{ fontSize:12, fontWeight:700, padding:'2px 8px', borderRadius:4, color:cfg.color, backgroundColor:cfg.bg, border:`1px solid ${cfg.border}`, flexShrink:0 }}>{cfg.label}</span>
+                            <DataPill style={{ flexShrink:0, fontSize:10 }}>{cfg.label}</DataPill>
                             <span style={{ fontSize:13, fontWeight:500, color:'#111827', flex:1 }}>{ch.title}</span>
-                            {ch.risk_impact && (
-                              <span style={{ fontSize:11, fontWeight:600, color: ch.risk_impact==='리스크 증가' ? '#dc2626' : '#16a34a', padding:'1px 8px', backgroundColor: ch.risk_impact==='리스크 증가' ? '#fef2f2' : '#f0fdf4', borderRadius:10, border:`1px solid ${ch.risk_impact==='리스크 증가' ? '#fecaca' : '#bbf7d0'}`, marginRight:4 }}>
-                                {ch.risk_impact==='리스크 증가' ? '▲ 위험 증가' : '▼ 위험 감소'}
-                              </span>
+                            {ch.risk_impact && ch.risk_impact !== '중립' && (
+                              <DataPill style={{ minWidth: 72, marginRight:4, fontSize:10 }}>
+                                {ch.risk_impact==='리스크 증가' ? '위험 증가' : '위험 감소'}
+                              </DataPill>
                             )}
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" style={{ transform:open?'rotate(180deg)':'none', flexShrink:0 }}><polyline points="6 9 12 15 18 9"/></svg>
                           </button>
                           {open && (
                             <div style={{ borderTop:'1px solid #f3f4f6', padding:'14px 16px', display:'flex', flexDirection:'column', gap:10 }}>
                               {ch.highlight && (
-                                <div style={{ padding:'8px 12px', backgroundColor:'#fffbeb', border:'1px solid #fde68a', borderRadius:6, fontSize:12, color:'#92400e' }}>
-                                  ⚠️ <strong>주요 변경:</strong> {ch.highlight}
+                                <div style={{ padding:'8px 12px', backgroundColor:'#fafafa', border:'1px solid #e5e7eb', borderRadius:6, fontSize:12, color:'#374151' }}>
+                                  <strong style={{ color:'#6b7280' }}>주요 변경</strong> {ch.highlight}
                                 </div>
                               )}
                               {ch.change_type !== 'UNCHANGED' ? (
                                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
                                   {ch.previous_content && (
                                     <div>
-                                      <p style={{ fontSize:11, fontWeight:600, color:'#dc2626', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
+                                      <p style={{ fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
                                         이전 v{diff.from_version}
                                       </p>
-                                      <div style={{ padding:'10px 12px', backgroundColor:'#fef2f2', borderRadius:6, fontSize:12, color:'#374151', lineHeight:1.7, border:'1px solid #fecaca', whiteSpace:'pre-wrap' }}>
+                                      <div style={{ padding:'10px 12px', backgroundColor:'#fafafa', borderRadius:6, fontSize:12, color:'#374151', lineHeight:1.7, border:'1px solid #e5e7eb', whiteSpace:'pre-wrap' }}>
                                         {ch.previous_content}
                                       </div>
                                     </div>
                                   )}
                                   <div style={{ gridColumn: ch.previous_content ? 'auto' : '1 / -1' }}>
-                                    <p style={{ fontSize:11, fontWeight:600, color:'#16a34a', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
+                                    <p style={{ fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:6 }}>
                                       현재 v{diff.to_version}
                                     </p>
-                                    <div style={{ padding:'10px 12px', backgroundColor:'#f0fdf4', borderRadius:6, fontSize:12, color:'#374151', lineHeight:1.7, border:'1px solid #bbf7d0', whiteSpace:'pre-wrap' }}>
+                                    <div style={{ padding:'10px 12px', backgroundColor:'#fafafa', borderRadius:6, fontSize:12, color:'#374151', lineHeight:1.7, border:'1px solid #e5e7eb', whiteSpace:'pre-wrap' }}>
                                       {ch.current_content}
                                     </div>
                                   </div>
@@ -430,20 +426,20 @@ export default function ContractDetailPage() {
                   return (
                     <div key={step.id} style={{ border:'1px solid #e5e7eb', borderRadius:8, padding:16, backgroundColor:'#fff', opacity: step.status==='PENDING' && !isActive ? 0.55 : 1 }}>
                       <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                        <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:14, fontWeight:700, backgroundColor: done ? '#dcfce7' : rej ? '#fee2e2' : isActive ? '#eff6ff' : '#f3f4f6', color: done ? '#16a34a' : rej ? '#dc2626' : isActive ? '#1d4ed8' : '#9ca3af' }}>
-                          {done ? '✓' : rej ? '✕' : step.step_order}
+                        <div style={{ width:32, height:32, borderRadius:'50%', flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontSize:13, fontWeight:600, backgroundColor:'#f3f4f6', color:'#4b5563', border:'1px solid #e5e7eb' }}>
+                          {done ? '✓' : rej ? '×' : step.step_order}
                         </div>
                         <div style={{ flex:1 }}>
                           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:2 }}>
                             <span style={{ fontSize:14, fontWeight:600, color:'#111827' }}>{step.department}</span>
                             <span style={{ fontSize:11, color:'#9ca3af', padding:'1px 7px', backgroundColor:'#f3f4f6', borderRadius:10 }}>{step.role}</span>
-                            {step.is_parallel && <span style={{ fontSize:10, color:'#7c3aed', padding:'1px 7px', backgroundColor:'#f5f3ff', border:'1px solid #ede9fe', borderRadius:10 }}>병렬</span>}
+                            {step.is_parallel && <DataPill style={{ minWidth: 40, minHeight: 18, fontSize: 10, fontWeight: 500 }}>병렬</DataPill>}
                           </div>
-                          {step.comment && <p style={{ fontSize:12, color:'#6b7280', margin:'4px 0 0' }}>💬 {step.comment}</p>}
+                          {step.comment && <p style={{ fontSize:12, color:'#6b7280', margin:'4px 0 0' }}>{step.comment}</p>}
                           {step.signed_at && <p style={{ fontSize:11, color:'#9ca3af', margin:'2px 0 0' }}>{new Date(step.signed_at).toLocaleString('ko-KR')}</p>}
                         </div>
-                        {done && <span style={{ fontSize:13, fontWeight:600, color:'#16a34a' }}>승인 완료</span>}
-                        {rej  && <span style={{ fontSize:13, fontWeight:600, color:'#dc2626' }}>반려</span>}
+                        {done && <span style={{ fontSize:13, fontWeight:600, color:'#374151' }}>승인 완료</span>}
+                        {rej  && <span style={{ fontSize:13, fontWeight:600, color:'#374151' }}>반려</span>}
                         {!done && !rej && !isActive && <span style={{ fontSize:11, color:'#9ca3af' }}>대기 중</span>}
                         {isActive && (
                           <div style={{ display:'flex', gap:6 }}>
@@ -452,7 +448,7 @@ export default function ContractDetailPage() {
                               {approving===step.id ? '…' : '승인'}
                             </button>
                             <button onClick={() => doReject(step.id)} disabled={approving===step.id}
-                              style={{ padding:'7px 14px', fontSize:12, color:'#dc2626', backgroundColor:'#fff', border:'1px solid #fecaca', borderRadius:6, cursor:'pointer' }}>
+                              style={{ padding:'7px 14px', fontSize:12, color:'#374151', backgroundColor:'#fff', border:'1px solid #e5e7eb', borderRadius:6, cursor:'pointer' }}>
                               반려
                             </button>
                           </div>
@@ -480,7 +476,7 @@ export default function ContractDetailPage() {
         {/* ── 우측 검색 패널 ── */}
         <aside style={{ width:280, minWidth:280, borderLeft:'1px solid #e5e7eb', display:'flex', flexDirection:'column', backgroundColor:'#fafafa', height:'100%', overflow:'hidden' }}>
           <div style={{ padding:'14px 16px', borderBottom:'1px solid #e5e7eb' }}>
-            <p style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:8 }}>📚 계약 이력 검색</p>
+            <p style={{ fontSize:12, fontWeight:600, color:'#374151', marginBottom:8 }}>계약 이력 검색</p>
             <div style={{ display:'flex', gap:6 }}>
               <input value={searchQ} onChange={e => setSearchQ(e.target.value)} onKeyDown={e => { if (e.key==='Enter') doSearch(); }} placeholder="과거 계약 이력 자연어 검색"
                 style={{ flex:1, padding:'7px 10px', fontSize:12, border:'1px solid #d1d5db', borderRadius:5, outline:'none', color:'#111827', backgroundColor:'#fff' }}
@@ -502,8 +498,8 @@ export default function ContractDetailPage() {
             {searching && <p style={{ fontSize:12, color:'#9ca3af', textAlign:'center', paddingTop:24 }}>검색 중…</p>}
             {!searching && searchRes && (
               <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
-                <div style={{ padding:'12px', backgroundColor:'#fff', border:'1px solid #bfdbfe', borderRadius:7, borderLeft:'3px solid #3b82f6' }}>
-                  <p style={{ fontSize:11, fontWeight:600, color:'#1d4ed8', marginBottom:6 }}>AI 답변</p>
+                <div style={{ padding:'12px', backgroundColor:'#fff', border:'1px solid #e5e7eb', borderRadius:7 }}>
+                  <p style={{ fontSize:11, fontWeight:600, color:'#6b7280', marginBottom:6 }}>AI 답변</p>
                   <p style={{ fontSize:12, color:'#374151', lineHeight:1.65, margin:0 }}>{searchRes.answer}</p>
                 </div>
                 {searchRes.sources.length > 0 && (
