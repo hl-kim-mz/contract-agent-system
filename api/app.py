@@ -130,6 +130,91 @@ async def analyze_contract(
 
 
 # ═══════════════════════════════════════════════════════════════
+# Diff
+# ═══════════════════════════════════════════════════════════════
+@app.get("/contracts/{contract_id}/diff")
+def get_diff(contract_id: str):
+    """현재 버전과 이전 버전 조항 비교"""
+    resp = _contracts_table.get_item(Key={"id": contract_id})
+    current = resp.get("Item")
+    if not current:
+        raise HTTPException(status_code=404, detail="계약서를 찾을 수 없습니다")
+
+    current_version = int(current.get("version", 1))
+    if current_version <= 1:
+        return {"success": True, "data": None}
+
+    # 동일 고객·계약 유형에서 이전 버전 탐색
+    scan_resp = _contracts_table.scan(
+        FilterExpression="customer_name = :cn AND contract_type = :ct AND #v = :pv",
+        ExpressionAttributeNames={"#v": "version"},
+        ExpressionAttributeValues={
+            ":cn": current.get("customer_name"),
+            ":ct": current.get("contract_type"),
+            ":pv": current_version - 1,
+        },
+    )
+    prev_items = scan_resp.get("Items", [])
+    if not prev_items:
+        return {"success": True, "data": None}
+
+    previous = prev_items[0]
+    current_clauses = {str(c["index"]): c for c in current.get("clauses", [])}
+    previous_clauses = {str(c["index"]): c for c in previous.get("clauses", [])}
+
+    changes = []
+    for cid, c in current_clauses.items():
+        if cid not in previous_clauses:
+            changes.append({
+                "clause_id": cid,
+                "title": c.get("title", ""),
+                "change_type": "ADDED",
+                "previous_content": None,
+                "current_content": c.get("body", ""),
+                "risk_impact": None,
+                "highlight": None,
+            })
+        elif c.get("body") != previous_clauses[cid].get("body"):
+            changes.append({
+                "clause_id": cid,
+                "title": c.get("title", ""),
+                "change_type": "MODIFIED",
+                "previous_content": previous_clauses[cid].get("body", ""),
+                "current_content": c.get("body", ""),
+                "risk_impact": None,
+                "highlight": None,
+            })
+    for cid, c in previous_clauses.items():
+        if cid not in current_clauses:
+            changes.append({
+                "clause_id": cid,
+                "title": c.get("title", ""),
+                "change_type": "REMOVED",
+                "previous_content": c.get("body", ""),
+                "current_content": "",
+                "risk_impact": None,
+                "highlight": None,
+            })
+
+    added_cnt = sum(1 for ch in changes if ch["change_type"] == "ADDED")
+    removed_cnt = sum(1 for ch in changes if ch["change_type"] == "REMOVED")
+    modified_cnt = sum(1 for ch in changes if ch["change_type"] == "MODIFIED")
+    diff_summary = f"조항 추가 {added_cnt}건, 삭제 {removed_cnt}건, 수정 {modified_cnt}건이 감지되었습니다."
+
+    return {
+        "success": True,
+        "data": {
+            "contract_id": contract_id,
+            "from_version": current_version - 1,
+            "to_version": current_version,
+            "diff_summary": diff_summary,
+            "risk_change": "",
+            "changes": changes,
+        },
+    }
+
+
+# ═══════════════════════════════════════════════════════════════
 # Risk Reports
 # ═══════════════════════════════════════════════════════════════
 @app.get("/contracts/{contract_id}/report")

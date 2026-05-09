@@ -153,7 +153,7 @@ export async function uploadContract(file: File, customerName: string, contractT
   form.append('file', file);
   form.append('customer_name', customerName);
   form.append('contract_type', contractType ?? 'Other');
-  const res = await fetch(`${API_BASE}/contracts/upload`, { method: 'POST', body: form });
+  const res = await fetch(`${API_BASE}/contracts/analyze`, { method: 'POST', body: form });
   const json = await res.json();
   return json.data as Contract;
 }

@@ -13,7 +13,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    PageBreak, HRFlowable
+    PageBreak, HRFlowable, Image
 )
 from reportlab.platypus.flowables import Flowable
 from reportlab.pdfbase import pdfmetrics
@@ -121,144 +121,7 @@ def arrow_label(c, x, y, label, fsize=6):
     c.setFont(BASE_FONT, fsize); c.setFillColor(CGY)
     c.drawCentredString(x, y, label)
 
-# ══════════════════════════════════════════════════════════════
-#  PAGE 1 DIAGRAM  — 전체 시스템 아키텍처
-# ══════════════════════════════════════════════════════════════
-
-class ArchDiagram(Flowable):
-    W, H = 170*mm, 118*mm
-    def wrap(self, *a): return (self.W, self.H)
-
-    def draw(self):
-        c = self.canv; w, h = self.W, self.H
-
-        # ── 1. UI Layer ──────────────────────────────────────
-        draw_box(c, 8, h-30, w-16, 26, CP, CS,
-                 ["사용자 인터페이스",
-                  "대시보드  |  업로드  |  리스크리포트  |  Diff뷰  |  워크플로우  |  검색"],
-                 fsize=7.5)
-
-        draw_arrow(c, w/2, h-30, w/2, h-42)
-        arrow_label(c, w/2+18, h-38, "HTTP / FastAPI")
-
-        # ── 2. API Gateway ───────────────────────────────────
-        draw_box(c, 8, h-62, w-16, 18, CS, CP,
-                 ["API Gateway",
-                  "/upload  /contracts  /workflow  /search  /settings"],
-                 fsize=7.5)
-
-        # ── 3. Three Columns ─────────────────────────────────
-        cy = h-94; ch = 28; cg = 4
-        col_defs = [
-            (8,            w*0.31-4,  CCO, colors.HexColor("#047857"),
-             ["DOCX 파서", "코드 기반 처리"]),
-            (w*0.31+cg,    w*0.38-4,  CAI, colors.HexColor("#6D28D9"),
-             ["Strands Agent SDK", "Risk Agent  |  Search Agent"]),
-            (w*0.69+cg,    w*0.31-12, CCO, colors.HexColor("#047857"),
-             ["Rule Engine", "코드 기반 라우팅"]),
-        ]
-        xs = [8, w*0.31+cg, w*0.69+cg]
-        for i, (x, bw, fill, stroke, lines) in enumerate(col_defs):
-            draw_arrow(c, x + bw/2, h-62, x + bw/2, cy+ch)
-            draw_box(c, x, cy, bw, ch, fill, stroke, lines, fsize=7)
-
-        # ── 4. AWS Infra container ───────────────────────────
-        iy = 4; ih = cy - 10
-        c.setFillColor(colors.HexColor("#FFF7ED"))
-        c.setStrokeColor(CAW); c.setLineWidth(1.2)
-        c.roundRect(8, iy, w-16, ih, 5, fill=1, stroke=1)
-        c.setFillColor(CAW); c.setFont(BASE_FONT_BOLD, 8)
-        c.drawCentredString(w/2, iy + ih - 10, "AWS 인프라")
-
-        iw = (w-40) / 3
-        infra = [
-            (16,           ["Amazon S3", "계약서 원본 / JSON"],
-             colors.HexColor("#E65C00"), colors.HexColor("#B34500")),
-            (16+iw+4,      ["Amazon DynamoDB", "contracts / risks / workflow"],
-             CDB, colors.HexColor("#2A36A8")),
-            (16+iw*2+8,    ["AWS Bedrock", "Claude 3.5 Sonnet v2 / KB"],
-             CAI, colors.HexColor("#6D28D9")),
-        ]
-        for x, lines, fill, stroke in infra:
-            draw_box(c, x, iy+6, iw, ih-18, fill, stroke, lines, fsize=7)
-
-        # arrows col → infra
-        for x, bw, *_ in col_defs:
-            draw_arrow(c, x+bw/2, cy, x+bw/2, iy+ih-6, color=CGY)
-
-
-# ══════════════════════════════════════════════════════════════
-#  PAGE 2 DIAGRAM  — Agent 오케스트레이션
-# ══════════════════════════════════════════════════════════════
-
-class AgentDiagram(Flowable):
-    W, H = 170*mm, 110*mm
-    def wrap(self, *a): return (self.W, self.H)
-
-    def draw(self):
-        c = self.canv; w, h = self.W, self.H
-
-        # ── Orchestrator ──────────────────────────────────────
-        ox, oy, ow, oh = w/2-45, h-36, 90, 28
-        draw_box(c, ox, oy, ow, oh, CP, CS,
-                 ["Orchestrator Agent", "Strands SDK  ·  FastAPI /workflow"],
-                 fsize=8)
-
-        # ── parse_contract (코드) ─────────────────────────────
-        px, py, pw, ph = 6, h-76, 60, 24
-        draw_box(c, px, py, pw, ph, CCO, colors.HexColor("#047857"),
-                 ["parse_contract()", "코드 함수", "Contract JSON 생성"], fsize=7)
-        draw_arrow(c, ox, oy+oh/2, px+pw, py+ph/2)
-        arrow_label(c, (ox+px+pw)/2, py+ph/2+5, "호출")
-
-        # ── Risk Agent ───────────────────────────────────────
-        rax, ray, raw, rah = w/2-36, h-80, 72, 26
-        draw_box(c, rax, ray, raw, rah, CAI, colors.HexColor("#6D28D9"),
-                 ["Risk Agent", "Agent-as-Tool (Sub-Agent)"], fsize=7.5)
-        draw_arrow(c, w/2, oy, w/2, ray+rah)
-        arrow_label(c, w/2+18, ray+rah+6, "review_contract_risks()")
-
-        # ── Risk Tools ───────────────────────────────────────
-        tool_y = h-108; tool_h = 18; tool_w = 50; gap = 4
-        tools = [
-            ("check_risk()", "LLM 리스크 탐지", CAI),
-            ("diff_with_prev()", "코드+LLM 비교", CCO),
-            ("analyze_fin()", "LLM 재무 분석", CAI),
-        ]
-        total_tw = len(tools)*(tool_w+gap) - gap
-        tx_start = w/2 - total_tw/2
-        for i, (name, sub, col) in enumerate(tools):
-            tx = tx_start + i*(tool_w+gap)
-            draw_box(c, tx, tool_y, tool_w, tool_h, col, col,
-                     [name, sub], fsize=6)
-            draw_arrow(c, rax+raw/2, ray, tx+tool_w/2, tool_y+tool_h)
-
-        # ── route_reviewers (코드) ────────────────────────────
-        rvx, rvy, rvw, rvh = w-68, h-76, 64, 24
-        draw_box(c, rvx, rvy, rvw, rvh, CCO, colors.HexColor("#047857"),
-                 ["route_reviewers()", "Rule Engine", "검토자 라우팅"], fsize=7)
-        draw_arrow(c, ox+ow, oy+oh/2, rvx, rvy+rvh/2)
-        arrow_label(c, (ox+ow+rvx)/2, rvy+rvh/2+5, "호출")
-
-        # ── Search Agent (독립) ───────────────────────────────
-        sax, say, saw, sah = w-66, 8, 62, 30
-        draw_box(c, sax, say, saw, sah,
-                 colors.HexColor("#0891B2"), colors.HexColor("#0E7490"),
-                 ["Search Agent", "독립 엔드포인트", "search_contract_history()"], fsize=6.5)
-
-        # dashed separator
-        c.setStrokeColor(CBR); c.setLineWidth(0.5); c.setDash([3,3])
-        c.line(sax-6, 0, sax-6, h)
-        c.setDash()
-        c.setFont(BASE_FONT, 6); c.setFillColor(CGY)
-        c.drawString(sax-5, h-10, "별도 실행")
-
-        # Legend
-        legend = [("■ AI (LLM)", CAI), ("■ 코드", CCO), ("■ 인프라", CAW)]
-        lx = 8
-        for txt, col in legend:
-            c.setFillColor(col); c.setFont(BASE_FONT_BOLD, 6.5)
-            c.drawString(lx, 8, txt); lx += 48
+# (ArchDiagram, AgentDiagram 제거 — 이미지로 대체)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -338,58 +201,53 @@ class StatusDiagram(Flowable):
 
     def draw(self):
         c = self.canv; w, h = self.W, self.H
-        cx = w/2; bw = 72; bh = 13
+        cx = w/2; bw = w - 8; bh = 12; fsize = 6.5
 
-        def sb(x, y, text, fill):
-            c.setFillColor(fill); c.setStrokeColor(fill); c.setLineWidth(0.7)
-            c.roundRect(x-bw/2, y, bw, bh, 3, fill=1, stroke=1)
-            c.setFillColor(colors.white); c.setFont(BASE_FONT_BOLD, 7)
-            c.drawCentredString(x, y+bh/2-7*0.26, text)
+        def sb(x, y, text, fill, bw_=None):
+            bw2 = bw_ or bw
+            c.setFillColor(fill); c.setStrokeColor(fill); c.setLineWidth(0.6)
+            c.roundRect(x - bw2/2, y, bw2, bh, 3, fill=1, stroke=1)
+            c.setFillColor(colors.white); c.setFont(BASE_FONT_BOLD, fsize)
+            c.drawCentredString(x, y + bh/2 - fsize*0.26, text)
 
         states = [
-            (cx, h-22,  "DRAFT",             CGY),
-            (cx, h-40,  "PARSING",           colors.HexColor("#0891B2")),
-            (cx, h-58,  "RISK_REVIEWED",      CAI),
-            (cx, h-74,  "PENDING_APPROVAL",   CS),
-        ]
-        ends = [
-            (cx-22, h-88, "APPROVED", CLR),
-            (cx+22, h-88, "REJECTED", CHR),
+            (cx, h-20,  "DRAFT",            CGY),
+            (cx, h-37,  "PARSING",          colors.HexColor("#0891B2")),
+            (cx, h-54,  "RISK_REVIEWED",    CAI),
+            (cx, h-71,  "PENDING_APPROVAL", CS),
         ]
 
         # start dot
         c.setFillColor(colors.HexColor("#1E293B"))
-        c.circle(cx, h-12, 4, fill=1, stroke=0)
-        c.setFont(BASE_FONT, 6); c.setFillColor(CGY)
-        c.drawCentredString(cx, h-11, "업로드")
+        c.circle(cx, h-10, 3.5, fill=1, stroke=0)
+        c.setFont(BASE_FONT, 5.5); c.setFillColor(CGY)
+        c.drawCentredString(cx, h-9, "업로드")
 
         labels = ["파싱 시작", "파싱 완료", "라우팅 완료"]
-        prev = (cx, h-12)
+        prev = (cx, h-10)
         for i, (x, y, name, fill) in enumerate(states):
-            draw_arrow(c, prev[0], prev[1]-4, x, y+bh, color=CGY)
+            draw_arrow(c, prev[0], prev[1]-3.5, x, y+bh, color=CGY)
             if i > 0:
-                arrow_label(c, cx+20, (prev[1]+y+bh)/2, labels[i-1])
+                arrow_label(c, cx + bw/2 - 5, (prev[1] + y+bh)/2, labels[i-1], fsize=5.5)
             sb(x, y, name, fill)
             prev = (x, y)
 
-        # branch
+        # RISK note
+        c.setFillColor(CAI); c.setFont(BASE_FONT, 5)
+        c.drawString(4, h-51, "→ 리스크 리포트")
+
+        # end states (APPROVED / REJECTED) side-by-side
+        ebw = bw/2 - 3; gap = 4
+        approx = cx - ebw/2 - gap/2
+        rejx   = cx + ebw/2 + gap/2
+        ey = h-86
         lx, ly = states[-1][0], states[-1][1]
-        for ex, ey, name, fill in ends:
-            draw_arrow(c, lx, ly, ex, ey+bh, color=CGY)
-            sb(ex, ey, name, fill)
-
-        # side note
-        c.setFillColor(CAI); c.setFont(BASE_FONT, 5.5)
-        c.drawString(cx+39, h-54, "→ 리스크 리포트 생성")
-
-        # dashed back arrow
-        c.setStrokeColor(CHR); c.setLineWidth(0.5); c.setDash([2,2])
-        c.line(cx+22+bw/2, h-88+bh/2, cx+22+bw/2+10, h-88+bh/2)
-        c.line(cx+22+bw/2+10, h-88+bh/2, cx+22+bw/2+10, h-22+bh/2)
-        draw_arrow(c, cx+22+bw/2+10, h-22+bh/2, cx+bw/2, h-22+bh/2, color=CHR)
-        c.setDash()
-        c.setFont(BASE_FONT, 5); c.setFillColor(CHR)
-        c.drawString(cx+22+bw/2+2, h-55, "재업로드")
+        draw_arrow(c, lx, ly, approx, ey+bh, color=CGY)
+        draw_arrow(c, lx, ly, rejx,   ey+bh, color=CGY)
+        sb(approx, ey, "APPROVED", CLR, bw_=ebw)
+        sb(rejx,   ey, "REJECTED", CHR, bw_=ebw)
+        arrow_label(c, approx-2, ey+bh+4, "승인", fsize=5.5)
+        arrow_label(c, rejx+2,   ey+bh+4, "반려", fsize=5.5)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -473,25 +331,20 @@ def build(out_path):
     sp(8)
 
     h1("1. 전체 시스템 아키텍처")
-    p("계약서 DOCX 업로드부터 리스크 탐지 · 버전 비교 · 검토 라우팅 · 히스토리 검색까지 "
-      "3개의 AI Agent가 협력하는 Multi-Agent 계약 검토 시스템입니다.")
+    p("Strands SDK와 AWS Bedrock 기반 멀티 에이전트 시스템으로, 계약서 업로드 시 60초 이내에 "
+      "리스크 리포트를 생성하고 사내 규정에 맞춰 자동 배정합니다.")
     sp(5)
-    story.append(ArchDiagram())
-    cap("그림 1. CAS 전체 아키텍처 — UI · API · Agent · AWS 인프라 레이어")
+    _img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "unnamed (2).png")
+    if os.path.exists(_img_path):
+        story.append(Image(_img_path, width=170*mm, height=96*mm))
+    cap("그림 1. CAS 멀티 에이전트 기반 계약서 분석 아키텍처 — 에이전트 구성 및 워크플로우")
 
     # ══ PAGE 2 ══════════════════════════════════════════════
     story.append(PageBreak())
-    h1("2. Agent 구성 및 오케스트레이션")
-    p("Strands Agent SDK 기반 계층적 Multi-Agent 구조입니다. "
-      "Orchestrator가 코드 함수·Sub-Agent·Rule Engine을 조율하며, "
-      "Search Agent는 RAG 엔드포인트로 독립 운영됩니다.")
-    sp(5)
-    story.append(AgentDiagram())
-    cap("그림 2. Agent 오케스트레이션 흐름 — Orchestrator → Risk Agent(Tools) / Search Agent")
-    sp(8)
+    h1("2. AI vs 코드 역할 분담")
+    sp(4)
     hr()
 
-    h2("AI vs 코드 역할 분담")
     role_data = [
         ["구성 요소", "처리 방식", "근거"],
         ["리스크 조항 탐지",       "AI  (Risk Agent — check_risk)",        "법적 맥락 이해, 비정형 판단"],
