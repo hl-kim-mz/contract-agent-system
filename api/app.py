@@ -12,7 +12,7 @@ from decimal import Decimal
 from typing import Optional
 
 import boto3
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -106,14 +106,170 @@ def get_contract(contract_id: str):
     return {"success": True, "data": _decimal_to_native(item)}
 
 
+def _run_analysis_pipeline(
+    contract_id: str,
+    contract_data: dict,
+    doc: dict,
+    clauses: list,
+    entities: dict,
+    now: str,
+):
+    """백그라운드에서 실행되는 에이전트 파이프라인 (파싱→리스크→법무)."""
+    contract_json = None
+    risk_data = None
+    legal_data = None
+    parsing_failed = False
+    risk_failed = False
+    legal_failed = False
+
+    # Step 1: ParsingAgent (status → PARSING 유지, 이미 설정됨)
+    try:
+        from agents.parsing_agent import parsing_agent
+        parsing_input = (
+            f"다음 계약서를 분석하세요:\n\n"
+            f"원문:\n{doc['text'][:3000]}\n\n"
+            f"추출된 조항:\n{json.dumps(clauses, ensure_ascii=False)}\n\n"
+            f"엔티티:\n{json.dumps(entities, ensure_ascii=False)}"
+        )
+        parsing_result = parsing_agent(parsing_input)
+        contract_json = _extract_json(str(parsing_result))
+        logger.info("ParsingAgent completed: %s", contract_json.get("contract_type"))
+    except Exception as e:
+        logger.warning("ParsingAgent failed, using clause_extractor fallback: %s", e)
+        parsing_failed = True
+
+    # Step 2: RiskAgent (status → RISK_ANALYZING)
+    _contracts_table.update_item(
+        Key={"id": contract_id},
+        UpdateExpression="SET #st = :st",
+        ExpressionAttributeNames={"#st": "status"},
+        ExpressionAttributeValues={":st": "RISK_ANALYZING"},
+    )
+    try:
+        from agents.risk_agent import risk_agent
+        analysis_input = contract_json or {"clauses": clauses, "entities": entities}
+        risk_input = f"다음 계약서의 리스크를 분석하세요:\n\n{json.dumps(analysis_input, ensure_ascii=False)}"
+        risk_result = risk_agent(risk_input)
+        risk_data = _extract_json(str(risk_result))
+        logger.info("RiskAgent completed: overall_risk=%s", risk_data.get("overall_risk"))
+    except Exception as e:
+        logger.warning("RiskAgent failed: %s", e)
+        risk_failed = True
+        risk_data = {
+            "overall_risk": "MEDIUM",
+            "risk_summary": "AI 분석 실패 — 기본 리스크 수준 적용",
+            "clause_risks": [],
+            "key_concerns": [],
+            "escalation_required": False,
+        }
+
+    # Step 3: LegalReviewAgent
+    try:
+        from agents.legal_review_agent import legal_review_agent
+        legal_input = f"다음 리스크 리포트를 검토하세요:\n\n{json.dumps(risk_data, ensure_ascii=False)}"
+        legal_result = legal_review_agent(legal_input)
+        legal_data = _extract_json(str(legal_result))
+        logger.info("LegalReviewAgent completed: %s", legal_data.get("recommendation"))
+    except Exception as e:
+        logger.warning("LegalReviewAgent failed: %s", e)
+        legal_failed = True
+
+    # ── 최종 상태 결정 ──
+    all_failed = parsing_failed and risk_failed and legal_failed
+    some_failed = (parsing_failed or risk_failed or legal_failed) and not all_failed
+
+    if all_failed:
+        final_status = "ANALYSIS_FAILED"
+    elif some_failed:
+        final_status = "PARTIAL_REVIEW"
+    else:
+        final_status = "RISK_REVIEWED"
+
+    overall_risk = risk_data.get("overall_risk", get_overall_risk(risk_data.get("clause_risks", [])))
+
+    # ── Risk Report → DynamoDB ──
+    report_id = str(uuid.uuid4())
+    risk_report_item = {
+        "id": report_id,
+        "contract_id": contract_id,
+        "overall_risk": overall_risk,
+        "is_standard_contract": (contract_json or {}).get("is_standard", False),
+        "risk_summary": risk_data.get("risk_summary", ""),
+        "clause_risks_json": json.dumps(risk_data.get("clause_risks", []), ensure_ascii=False),
+        "key_concerns_json": json.dumps(risk_data.get("key_concerns", []), ensure_ascii=False),
+        "standard_deviation": risk_data.get("standard_deviation"),
+        "escalation_required": risk_data.get("escalation_required", False),
+        "created_at": now,
+    }
+    if legal_data:
+        risk_report_item["legal_review"] = json.dumps(legal_data, ensure_ascii=False)
+    if some_failed:
+        risk_report_item["agent_failures"] = json.dumps({
+            "parsing": parsing_failed,
+            "risk": risk_failed,
+            "legal": legal_failed,
+        }, ensure_ascii=False)
+    _reports_table.put_item(Item=risk_report_item)
+
+    # ── Workflow Steps → DynamoDB (실패 시 생략) ──
+    if not all_failed:
+        wf_input_contract = dict(contract_data)
+        if contract_json and "financials" in contract_json:
+            wf_input_contract["financials"] = contract_json["financials"]
+        workflow_steps = route_workflow(
+            {"overall_risk": overall_risk, "clause_risks": risk_data.get("clause_risks", [])},
+            wf_input_contract,
+        )
+        for step in workflow_steps:
+            step_item = {
+                "id": str(uuid.uuid4()),
+                "contract_id": contract_id,
+                "step_order": step["step_order"],
+                "department": step["department"],
+                "role": step["department"],
+                "status": "PENDING",
+                "comment": None,
+                "signed_at": None,
+                "is_parallel": step.get("parallel", False),
+            }
+            _workflow_table.put_item(Item=step_item)
+
+    # ── Contract 업데이트 ──
+    update_expr_parts = [
+        "#st = :st", "overall_risk = :or_val", "is_standard = :is_std", "analyzed_at = :aa"
+    ]
+    expr_names = {"#st": "status"}
+    expr_values = {
+        ":st": final_status,
+        ":or_val": overall_risk,
+        ":is_std": (contract_json or {}).get("is_standard", False),
+        ":aa": now,
+    }
+    if contract_json and "parties" in contract_json:
+        update_expr_parts.append("parties = :parties")
+        expr_values[":parties"] = contract_json["parties"]
+    if contract_json and "dates" in contract_json:
+        update_expr_parts.append("dates = :dates")
+        expr_values[":dates"] = contract_json["dates"]
+
+    _contracts_table.update_item(
+        Key={"id": contract_id},
+        UpdateExpression="SET " + ", ".join(update_expr_parts),
+        ExpressionAttributeNames=expr_names,
+        ExpressionAttributeValues=expr_values,
+    )
+    logger.info("Analysis pipeline completed: contract_id=%s status=%s", contract_id, final_status)
+
+
 @app.post("/contracts/analyze")
 async def analyze_contract(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     customer_name: str = Form("Unknown"),
     contract_type: str = Form("Other"),
     uploaded_by: str = Form("demo_user"),
 ):
-    """DOCX 업로드 → AI 파싱 → 리스크 분석 → 법무 검토 → DynamoDB 저장"""
+    """DOCX 업로드 → 즉시 contract_id 반환 → 백그라운드에서 에이전트 파이프라인 실행"""
     if not file.filename.endswith(".docx"):
         raise HTTPException(status_code=400, detail="DOCX 파일만 지원합니다")
 
@@ -152,142 +308,23 @@ async def analyze_contract(
     }
     _contracts_table.put_item(Item=contract_data)
 
-    # ── AI Agent Pipeline ──
-    contract_json = None
-    risk_data = None
-    legal_data = None
-
-    # Step 1: ParsingAgent
-    try:
-        from agents.parsing_agent import parsing_agent
-        parsing_input = (
-            f"다음 계약서를 분석하세요:\n\n"
-            f"원문:\n{doc['text'][:3000]}\n\n"
-            f"추출된 조항:\n{json.dumps(clauses, ensure_ascii=False)}\n\n"
-            f"엔티티:\n{json.dumps(entities, ensure_ascii=False)}"
-        )
-        parsing_result = parsing_agent(parsing_input)
-        contract_json = _extract_json(str(parsing_result))
-        logger.info("ParsingAgent completed: %s", contract_json.get("contract_type"))
-    except Exception as e:
-        logger.warning("ParsingAgent failed, using clause_extractor fallback: %s", e)
-
-    # Step 2: RiskAgent
-    try:
-        from agents.risk_agent import risk_agent
-        analysis_input = contract_json or {"clauses": clauses, "entities": entities}
-        risk_input = f"다음 계약서의 리스크를 분석하세요:\n\n{json.dumps(analysis_input, ensure_ascii=False)}"
-        risk_result = risk_agent(risk_input)
-        risk_data = _extract_json(str(risk_result))
-        logger.info("RiskAgent completed: overall_risk=%s", risk_data.get("overall_risk"))
-    except Exception as e:
-        logger.warning("RiskAgent failed: %s", e)
-        risk_data = {
-            "overall_risk": "MEDIUM",
-            "risk_summary": "AI 분석 실패 — 기본 리스크 수준 적용",
-            "clause_risks": [],
-            "key_concerns": [],
-            "escalation_required": False,
-        }
-
-    # Step 3: LegalReviewAgent
-    try:
-        from agents.legal_review_agent import legal_review_agent
-        legal_input = f"다음 리스크 리포트를 검토하세요:\n\n{json.dumps(risk_data, ensure_ascii=False)}"
-        legal_result = legal_review_agent(legal_input)
-        legal_data = _extract_json(str(legal_result))
-        logger.info("LegalReviewAgent completed: %s", legal_data.get("recommendation"))
-    except Exception as e:
-        logger.warning("LegalReviewAgent failed: %s", e)
-
-    # ── 결과 계산 ──
-    overall_risk = risk_data.get("overall_risk", get_overall_risk(risk_data.get("clause_risks", [])))
-
-    # ── Risk Report → DynamoDB ──
-    report_id = str(uuid.uuid4())
-    risk_report_item = {
-        "id": report_id,
-        "contract_id": contract_id,
-        "overall_risk": overall_risk,
-        "is_standard_contract": (contract_json or {}).get("is_standard", False),
-        "risk_summary": risk_data.get("risk_summary", ""),
-        "clause_risks_json": json.dumps(risk_data.get("clause_risks", []), ensure_ascii=False),
-        "key_concerns_json": json.dumps(risk_data.get("key_concerns", []), ensure_ascii=False),
-        "standard_deviation": risk_data.get("standard_deviation"),
-        "escalation_required": risk_data.get("escalation_required", False),
-        "created_at": now,
-    }
-    if legal_data:
-        risk_report_item["legal_review"] = json.dumps(legal_data, ensure_ascii=False)
-    _reports_table.put_item(Item=risk_report_item)
-
-    # ── Workflow Steps → DynamoDB ──
-    wf_input_contract = dict(contract_data)
-    if contract_json and "financials" in contract_json:
-        wf_input_contract["financials"] = contract_json["financials"]
-    workflow_steps = route_workflow(
-        {"overall_risk": overall_risk, "clause_risks": risk_data.get("clause_risks", [])},
-        wf_input_contract,
-    )
-    saved_steps = []
-    for step in workflow_steps:
-        step_id = str(uuid.uuid4())
-        step_item = {
-            "id": step_id,
-            "contract_id": contract_id,
-            "step_order": step["step_order"],
-            "department": step["department"],
-            "role": step["department"],
-            "status": "PENDING",
-            "comment": None,
-            "signed_at": None,
-            "is_parallel": step.get("parallel", False),
-        }
-        _workflow_table.put_item(Item=step_item)
-        saved_steps.append(step_item)
-
-    # ── Contract 업데이트 (status=RISK_REVIEWED) ──
-    update_expr_parts = [
-        "#st = :st", "overall_risk = :or_val", "is_standard = :is_std", "analyzed_at = :aa"
-    ]
-    expr_names = {"#st": "status"}
-    expr_values = {
-        ":st": "RISK_REVIEWED",
-        ":or_val": overall_risk,
-        ":is_std": (contract_json or {}).get("is_standard", False),
-        ":aa": now,
-    }
-    if contract_json and "parties" in contract_json:
-        update_expr_parts.append("parties = :parties")
-        expr_values[":parties"] = contract_json["parties"]
-    if contract_json and "dates" in contract_json:
-        update_expr_parts.append("dates = :dates")
-        expr_values[":dates"] = contract_json["dates"]
-
-    _contracts_table.update_item(
-        Key={"id": contract_id},
-        UpdateExpression="SET " + ", ".join(update_expr_parts),
-        ExpressionAttributeNames=expr_names,
-        ExpressionAttributeValues=expr_values,
+    # ── 백그라운드에서 에이전트 파이프라인 실행 ──
+    background_tasks.add_task(
+        _run_analysis_pipeline,
+        contract_id, contract_data, doc, clauses, entities, now,
     )
 
     return {
         "success": True,
         "data": {
+            "id": contract_id,
             "contract_id": contract_id,
-            "status": "RISK_REVIEWED",
-            "parsed": {
-                "paragraph_count": doc["paragraph_count"],
-                "clause_count": len(clauses),
-                "entities": entities,
-            },
-            "risk_report": {
-                "id": report_id,
-                "overall_risk": overall_risk,
-                "clause_risks_count": len(risk_data.get("clause_risks", [])),
-            },
-            "workflow_steps": saved_steps,
-            "legal_review": legal_data,
+            "status": "PARSING",
+            "file_name": file.filename,
+            "customer_name": customer_name,
+            "contract_type": contract_type,
+            "uploaded_at": now,
+            "uploaded_by": uploaded_by,
         },
     }
 

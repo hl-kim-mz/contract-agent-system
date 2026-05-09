@@ -67,9 +67,9 @@ export default function ContractsPage() {
     if (!file || !customer.trim()) return;
     setUploading(true);
     try {
-      await uploadContract(file, customer, ctype);
+      const result = await uploadContract(file, customer, ctype);
       setModal(false); setFile(null); setCustomer(''); setCtype(null);
-      await load();
+      router.push(`/contracts/${result.id}`);
     } finally { setUploading(false); }
   };
 

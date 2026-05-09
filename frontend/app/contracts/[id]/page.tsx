@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { getContractDetail, type ContractDetail }                       from '@/lib/api/contract-detail';
 import { getRiskReport, RISK_LEVEL_CFG, RISK_TYPE_LABEL, type RiskReport } from '@/lib/api/risk-report';
@@ -38,15 +38,26 @@ export default function ContractDetailPage() {
   const [searching, setSearching] = useState(false);
   const [searchRes, setSearchRes] = useState<SearchResult | null>(null);
 
+  const loadDetail = useCallback(async () => {
+    if (!id) return;
+    const [c, r, s, d, t] = await Promise.all([
+      getContractDetail(id), getRiskReport(id).catch(() => null),
+      getWorkflowSteps(id), getDiffReport(id).catch(() => null), getContractText(id).catch(() => null),
+    ]);
+    setContract(c); setReport(r); setSteps(s); setDiff(d); setText(t);
+  }, [id]);
+
   useEffect(() => {
     if (!id) return;
-    Promise.all([
-      getContractDetail(id), getRiskReport(id),
-      getWorkflowSteps(id), getDiffReport(id), getContractText(id),
-    ]).then(([c, r, s, d, t]) => {
-      setContract(c); setReport(r); setSteps(s); setDiff(d); setText(t);
-    }).finally(() => setLoading(false));
-  }, [id]);
+    loadDetail().finally(() => setLoading(false));
+  }, [id, loadDetail]);
+
+  useEffect(() => {
+    if (!contract) return;
+    if (contract.status !== 'PARSING' && contract.status !== 'RISK_ANALYZING') return;
+    const t = setInterval(() => loadDetail(), 3000);
+    return () => clearInterval(t);
+  }, [contract, loadDetail]);
 
   const doApprove = async (stepId: string) => {
     setApproving(stepId);

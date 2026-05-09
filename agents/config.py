@@ -40,7 +40,7 @@ def get_haiku():
     if provider == "bedrock":
         return BedrockModel(
             model_id=os.getenv(
-                "HAIKU_MODEL_ID", "ap.anthropic.claude-haiku-4-5-20251001-v1:0"
+                "HAIKU_MODEL_ID", "global.anthropic.claude-haiku-4-5-20251001-v1:0"
             ),
             region_name=os.getenv("AWS_REGION", "ap-northeast-2"),
             temperature=0.2,
