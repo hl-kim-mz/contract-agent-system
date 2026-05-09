@@ -15,10 +15,14 @@ import type { ContractType }                                            from '@/
 
 type Tab = 'report' | 'text' | 'diff' | 'workflow' | 'comments';
 
-const STATUS_STEPS = ['DRAFT','PARSING','RISK_REVIEWED','PENDING_APPROVAL','APPROVED'] as const;
+const STATUS_STEPS = ['DRAFT','PARSING','RISK_ANALYZING','RISK_REVIEWED','PENDING_APPROVAL','APPROVED'] as const;
 const STATUS_LABEL: Record<string, string> = {
-  DRAFT:'업로드', PARSING:'AI 분석', RISK_REVIEWED:'검토 대기', PENDING_APPROVAL:'결재 중', APPROVED:'승인 완료', REJECTED:'반려',
+  DRAFT:'업로드', PARSING:'AI 분석', RISK_ANALYZING:'리스크 검토', RISK_REVIEWED:'검토 대기',
+  PARTIAL_REVIEW:'부분 검토', ANALYSIS_FAILED:'분석 실패',
+  PENDING_APPROVAL:'결재 중', APPROVED:'승인 완료', REJECTED:'반려',
 };
+
+const isAnalyzing = (status: string) => status === 'PARSING' || status === 'RISK_ANALYZING';
 
 export default function ContractDetailPage() {
   const router = useRouter();
@@ -166,7 +170,9 @@ export default function ContractDetailPage() {
             {tab==='report' && (
               <div style={{ display:'flex', flexDirection:'column', gap:20, maxWidth:760 }}>
                 {!report ? (
-                  <EmptyState text="분석 결과가 없습니다." />
+                  isAnalyzing(contract.status)
+                    ? <AnalyzingState step={contract.status === 'PARSING' ? '계약서를 파싱하고 있습니다…' : '리스크를 분석하고 있습니다…'} />
+                    : <EmptyState text="분석 결과가 없습니다." />
                 ) : <>
                   {/* 전체 리스크 요약 카드 */}
                   <div style={{ border:'1px solid #e5e7eb', borderRadius:10, overflow:'hidden' }}>
@@ -274,7 +280,11 @@ export default function ContractDetailPage() {
             {/* ── 원문 텍스트 탭 ── */}
             {tab==='text' && (
               <div style={{ display:'flex', flexDirection:'column', gap:16, maxWidth:760 }}>
-                {!text ? <EmptyState text="파싱된 원문 텍스트가 없습니다." /> : <>
+                {!text ? (
+                  isAnalyzing(contract.status)
+                    ? <AnalyzingState step="원문을 분석하고 있습니다…" />
+                    : <EmptyState text="파싱된 원문 텍스트가 없습니다." />
+                ) : <>
                   {/* 추출 정보 */}
                   <div style={{ backgroundColor:'#f9fafb', borderRadius:8, border:'1px solid #e5e7eb', padding:'14px 16px' }}>
                     <p style={{ fontSize:11, fontWeight:600, color:'#6b7280', textTransform:'uppercase', letterSpacing:'0.05em', marginBottom:10 }}>추출된 계약 정보</p>
@@ -545,4 +555,19 @@ export default function ContractDetailPage() {
 
 function EmptyState({ text }: { text: string }) {
   return <div style={{ textAlign:'center', paddingTop:60, color:'#9ca3af', fontSize:13 }}>{text}</div>;
+}
+
+function AnalyzingState({ step }: { step: string }) {
+  return (
+    <div style={{ textAlign:'center', paddingTop:48 }}>
+      <div style={{ display:'inline-flex', alignItems:'center', gap:10, padding:'14px 24px', backgroundColor:'#f0f5ff', borderRadius:10, border:'1px solid #dbeafe' }}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" style={{ animation:'spin 1.2s linear infinite' }}>
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        </svg>
+        <span style={{ fontSize:13, color:'#1d4ed8', fontWeight:500 }}>{step}</span>
+      </div>
+      <p style={{ fontSize:12, color:'#9ca3af', marginTop:14 }}>3초마다 자동 갱신됩니다</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
 }

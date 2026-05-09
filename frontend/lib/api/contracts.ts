@@ -6,7 +6,10 @@ export type RiskLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'NONE' | null;
 export type ContractStatus =
   | 'DRAFT'
   | 'PARSING'
+  | 'RISK_ANALYZING'
   | 'RISK_REVIEWED'
+  | 'PARTIAL_REVIEW'
+  | 'ANALYSIS_FAILED'
   | 'PENDING_APPROVAL'
   | 'APPROVED'
   | 'REJECTED';
@@ -169,7 +172,10 @@ export const RISK_CONFIG: Record<string, { label: string; color: string; bg: str
 export const STATUS_CONFIG: Record<ContractStatus, { label: string; color: string; bg: string }> = {
   DRAFT:            { label: '대기',     color: '#94a3b8', bg: 'transparent' },
   PARSING:          { label: '분석중',   color: '#94a3b8', bg: 'transparent' },
+  RISK_ANALYZING:   { label: '검토중',   color: '#3b82f6', bg: 'transparent' },
   RISK_REVIEWED:    { label: '검토완료', color: '#94a3b8', bg: 'transparent' },
+  PARTIAL_REVIEW:   { label: '부분검토', color: '#f59e0b', bg: 'transparent' },
+  ANALYSIS_FAILED:  { label: '분석실패', color: '#ef4444', bg: 'transparent' },
   PENDING_APPROVAL: { label: '결재대기', color: '#f59e0b', bg: 'transparent' },
   APPROVED:         { label: '승인완료', color: '#22c55e', bg: 'transparent' },
   REJECTED:         { label: '반려',     color: '#ef4444', bg: 'transparent' },

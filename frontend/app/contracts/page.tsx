@@ -52,7 +52,7 @@ export default function ContractsPage() {
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
-    if (!contracts.some(c => c.status === 'PARSING')) return;
+    if (!contracts.some(c => c.status === 'PARSING' || c.status === 'RISK_ANALYZING')) return;
     const t = setInterval(load, 3000);
     return () => clearInterval(t);
   }, [contracts, load]);
