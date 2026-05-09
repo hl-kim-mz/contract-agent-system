@@ -3,13 +3,16 @@ import os
 import re
 import uuid
 import logging
+
+from dotenv import load_dotenv
+load_dotenv()
 import tempfile
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Optional
 
 import boto3
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -106,9 +109,9 @@ def get_contract(contract_id: str):
 @app.post("/contracts/analyze")
 async def analyze_contract(
     file: UploadFile = File(...),
-    customer_name: str = "Unknown",
-    contract_type: str = "Other",
-    uploaded_by: str = "demo_user",
+    customer_name: str = Form("Unknown"),
+    contract_type: str = Form("Other"),
+    uploaded_by: str = Form("demo_user"),
 ):
     """DOCX 업로드 → AI 파싱 → 리스크 분석 → 법무 검토 → DynamoDB 저장"""
     if not file.filename.endswith(".docx"):
