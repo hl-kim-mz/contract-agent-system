@@ -31,7 +31,7 @@ def route_workflow(risk_report: dict, contract: dict) -> list:
         ]
 
     # 계약금액 10억+ → 재무팀 병렬 검토
-    total_amount = contract.get("financials", {}).get("total_amount", 0)
+    total_amount = contract.get("financials", {}).get("total_amount") or 0
     if total_amount >= 1_000_000_000:
         steps.append({"department": "재무팀", "step_order": 1, "parallel": True})
 

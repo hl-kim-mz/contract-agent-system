@@ -33,7 +33,7 @@ def search_history(query: str) -> dict:
                     "knowledgeBaseId": kb_id,
                     "modelArn": os.getenv(
                         "KB_MODEL_ARN",
-                        f"arn:aws:bedrock:{region}::foundation-model/anthropic.claude-sonnet-4-20250514",
+                        "apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
                     ),
                 },
             },
