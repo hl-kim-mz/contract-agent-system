@@ -8,7 +8,7 @@ const NAV = [
     href: '/contracts',
     label: '계약서',
     icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
         <line x1="16" y1="13" x2="8" y2="13"/>
@@ -20,7 +20,7 @@ const NAV = [
     href: '/settings/prompts',
     label: '프롬프트 설정',
     icon: (
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
         <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
       </svg>
     ),
@@ -38,39 +38,48 @@ export default function AppNav() {
       position: 'fixed',
       left: 0,
       top: 0,
-      backgroundColor: '#f9fafb',
-      borderRight: '1px solid #e5e7eb',
+      backgroundColor: '#fff',
+      borderRight: '1px solid #f1f5f9',
       display: 'flex',
       flexDirection: 'column',
     }}>
       {/* 로고 */}
       <div style={{
-        padding: '16px',
-        borderBottom: '1px solid #e5e7eb',
+        padding: '20px 16px 16px',
+        borderBottom: '1px solid #f8fafc',
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 10,
       }}>
         <div style={{
-          width: 28,
-          height: 28,
-          borderRadius: 6,
-          backgroundColor: '#1d4ed8',
+          width: 30,
+          height: 30,
+          borderRadius: 8,
+          backgroundColor: '#334155',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           color: '#fff',
-          fontSize: 12,
-          fontWeight: 700,
+          fontSize: 10,
+          fontWeight: 800,
           letterSpacing: '-0.02em',
+          flexShrink: 0,
         }}>
           CAS
         </div>
-        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>계약 분석</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: '#0f172a', lineHeight: 1.3, letterSpacing: '-0.01em' }}>계약 분석</div>
+          <div style={{ fontSize: 10, color: '#cbd5e1', marginTop: 1, fontWeight: 400 }}>MZC · AI 리스크</div>
+        </div>
+      </div>
+
+      {/* 섹션 레이블 */}
+      <div style={{ padding: '16px 16px 6px' }}>
+        <span style={{ fontSize: 9, fontWeight: 700, color: '#e2e8f0', letterSpacing: '0.1em', textTransform: 'uppercase' }}>메뉴</span>
       </div>
 
       {/* 메뉴 */}
-      <div style={{ padding: '8px 8px', flex: 1 }}>
+      <div style={{ padding: '0 8px', flex: 1 }}>
         {NAV.map(item => {
           const active = path.startsWith(item.href);
           return (
@@ -82,26 +91,28 @@ export default function AppNav() {
                 alignItems: 'center',
                 gap: 8,
                 padding: '7px 10px',
-                borderRadius: 5,
-                fontSize: 13,
-                fontWeight: active ? 500 : 400,
-                color: active ? '#1d4ed8' : '#374151',
-                backgroundColor: active ? '#eff6ff' : 'transparent',
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: active ? 600 : 400,
+                color: active ? '#0f172a' : '#64748b',
+                backgroundColor: active ? '#f1f5f9' : 'transparent',
                 marginBottom: 2,
-                transition: 'all 0.1s',
+                transition: 'background 0.12s, color 0.12s',
               }}
-              onMouseEnter={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#f3f4f6'; }}
-              onMouseLeave={e => { if (!active) (e.currentTarget as HTMLAnchorElement).style.backgroundColor = 'transparent'; }}
+              onMouseEnter={e => { if (!active) { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = '#f8fafc'; (e.currentTarget as HTMLAnchorElement).style.color = '#334155'; } }}
+              onMouseLeave={e => { if (!active) { (e.currentTarget as HTMLAnchorElement).style.backgroundColor = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = '#64748b'; } }}
             >
-              <span style={{ color: active ? '#1d4ed8' : '#6b7280' }}>{item.icon}</span>
+              <span style={{ color: active ? '#475569' : '#cbd5e1', flexShrink: 0, transition: 'color 0.12s' }}>{item.icon}</span>
               {item.label}
             </Link>
           );
         })}
       </div>
 
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #e5e7eb' }}>
-        <span style={{ fontSize: 11, color: '#9ca3af' }}>MEGATHON 2026</span>
+      {/* 푸터 */}
+      <div style={{ padding: '14px 16px', borderTop: '1px solid #f8fafc' }}>
+        <div style={{ fontSize: 9, fontWeight: 600, color: '#e2e8f0', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 2 }}>MEGATHON 2026</div>
+        <div style={{ fontSize: 10, color: '#e2e8f0' }}>v0.1.0 · Mock 모드</div>
       </div>
     </nav>
   );
