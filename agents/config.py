@@ -4,18 +4,28 @@ from strands.models.litellm import LiteLLMModel
 
 
 def _guardrail_kwargs() -> dict:
-    gid = os.getenv("BEDROCK_GUARDRAIL_ID")
-    gver = os.getenv("BEDROCK_GUARDRAIL_VERSION", "DRAFT")
-    return {"guardrail_id": gid, "guardrail_version": gver} if gid else {}
+    guardrail_id = os.getenv("BEDROCK_GUARDRAIL_ID")
+    guardrail_ver = os.getenv("BEDROCK_GUARDRAIL_VERSION")
+    if guardrail_id and guardrail_ver:
+        return {
+            "guardrail_config": {
+                "guardrailIdentifier": guardrail_id,
+                "guardrailVersion": guardrail_ver,
+            }
+        }
+    return {}
 
 
 def get_sonnet():
-    """Orchestrator, RiskAgent용 (Sonnet)"""
+    """Orchestrator/RiskAgent용 Sonnet 모델 반환."""
     provider = os.getenv("MODEL_PROVIDER", "groq")
     if provider == "bedrock":
         return BedrockModel(
-            model_id="apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
-            region_name="ap-northeast-2",
+            model_id=os.getenv(
+                "SONNET_MODEL_ID", "anthropic.claude-sonnet-4-20250514"
+            ),
+            region_name=os.getenv("AWS_REGION", "ap-northeast-2"),
+            temperature=0.3,
             streaming=True,
             **_guardrail_kwargs(),
         )
@@ -27,22 +37,25 @@ def get_sonnet():
 
 
 def get_haiku():
-    """ParsingAgent, SearchAgent용 (Haiku — 비용 효율)"""
+    """ParsingAgent/SearchAgent/LegalReviewAgent용 Haiku 모델 반환."""
     provider = os.getenv("MODEL_PROVIDER", "groq")
     if provider == "bedrock":
         return BedrockModel(
-            model_id="apac.anthropic.claude-3-haiku-20240307-v1:0",
-            region_name="ap-northeast-2",
+            model_id=os.getenv(
+                "HAIKU_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0"
+            ),
+            region_name=os.getenv("AWS_REGION", "ap-northeast-2"),
+            temperature=0.2,
             streaming=True,
-            **_guardrail_kwargs(),
         )
     return LiteLLMModel(
         client_args={"api_key": os.getenv("GROQ_API_KEY")},
         model_id="groq/llama-3.3-70b-versatile",
-        params={"max_tokens": 2048, "temperature": 0.1},
+        params={"max_tokens": 4096, "temperature": 0.2},
     )
 
 
-# 하위 호환
-def get_model():
-    return get_sonnet()
+# Backward compatibility aliases
+get_sonnet_model = get_sonnet
+get_haiku_model = get_haiku
+get_model = get_sonnet

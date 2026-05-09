@@ -1,4 +1,4 @@
-# Risk Agent — 시스템 프롬프트
+# RiskAgent — 시스템 프롬프트
 
 > **용도**: Contract JSON → Risk Report JSON (MZC 기준 9가지 리스크 탐지)  
 > **투입 시점**: DOCX 파싱 완료 후, 리스크 분석 단계  
@@ -351,6 +351,8 @@ Risk Report JSON을 반환하는 것이 유일한 역할입니다.
 
 ## 코드 연동 방법
 
+<!-- NOTE: 코드 예시는 requirements.md v3.0 기준으로 갱신됨 -->
+
 ```python
 # agents/risk_agent.py
 import json
@@ -358,11 +360,11 @@ from pathlib import Path
 from strands import Agent, tool
 from models import get_model
 
-PROMPT_PATH = Path(__file__).parent.parent / "docs/prompts/risk-agent.md"
+PROMPT_PATH = Path(__file__).parent.parent / "docs/prompts/legal-agent.md"
 
 
-def load_risk_prompt() -> str:
-    """docs/prompts/risk-agent.md에서 System Prompt 블록 추출"""
+def load_system_prompt() -> str:
+    """docs/prompts/legal-agent.md에서 System Prompt 블록 추출"""
     content = PROMPT_PATH.read_text(encoding="utf-8")
     start = content.find("```\n당신은 메가존클라우드")
     end   = content.find("\n```\n\n---\n\n## 입력 예시")
@@ -384,11 +386,11 @@ def check_risk(contract_json: dict) -> dict:
 
 
 @tool
-def diff_with_previous(contract_id: str, current_clauses: list) -> dict:
+def diff_clauses(contract_id: str, current_clauses: list) -> dict:
     """
-    DynamoDB에서 이전 버전 조회 → deepdiff로 변경점 추출 → LLM 리스크 영향 요약
+    DynamoDB에서 이전 버전 조회 → difflib로 변경점 추출 → LLM 리스크 영향 요약
     """
-    from deepdiff import DeepDiff
+    import difflib
     import boto3, os
 
     # 이전 버전 조회 (코드 기반)
@@ -396,15 +398,19 @@ def diff_with_previous(contract_id: str, current_clauses: list) -> dict:
     table = db.Table("cas-contracts")
     # ... (이전 버전 clauses 조회 로직)
 
-    # deepdiff (코드 기반, 확정적)
-    diff = DeepDiff(previous_clauses, current_clauses, ignore_order=False)
+    # difflib (코드 기반, 확정적)
+    prev_text = json.dumps(previous_clauses, ensure_ascii=False)
+    curr_text = json.dumps(current_clauses, ensure_ascii=False)
+    diff = list(difflib.unified_diff(
+        prev_text.splitlines(), curr_text.splitlines(), lineterm=""
+    ))
 
     # 리스크 영향 요약만 LLM에 위임
     if diff:
         agent = Agent(model=get_model(), system_prompt=load_system_prompt())
-        summary = agent(f"다음 계약서 버전 간 변경점의 법적 리스크 영향을 1~3문장으로 요약하세요:\n{diff}")
+        summary = agent(f"다음 계약서 버전 간 변경점의 법적 리스크 영향을 1~3문장으로 요약하세요:\n{chr(10).join(diff)}")
         return {"diff": diff, "risk_impact_summary": str(summary)}
-    return {"diff": {}, "risk_impact_summary": null}
+    return {"diff": [], "risk_impact_summary": None}
 
 
 @tool
@@ -420,11 +426,11 @@ def analyze_financials(financials: dict) -> str:
     return str(agent(prompt))
 
 
-# --- Risk Agent (Strands SDK) ---
+# --- RiskAgent (Strands SDK) ---
 risk_agent = Agent(
     model=get_model(),
     system_prompt=load_system_prompt(),
-    tools=[check_risk, diff_with_previous, analyze_financials],
+    tools=[check_risk, diff_clauses, analyze_financials],
 )
 ```
 

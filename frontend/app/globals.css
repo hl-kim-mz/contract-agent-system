@@ -6,31 +6,28 @@
 
 html, body {
   height: 100%;
-  background-color: #0A0A0B;
-  color: #F0F0F1;
-  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background-color: #ffffff;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* 스크롤바 다크 스타일 */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #111113;
-}
-::-webkit-scrollbar-thumb {
-  background: #2E2E36;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #3E3E46;
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f9fafb; }
+::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+
+select option { background: #ffffff; color: #111827; }
+
+a { color: inherit; text-decoration: none; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
 }
 
-/* select 다크 스타일 */
-select option {
-  background-color: #1E1E22;
-  color: #F0F0F1;
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }

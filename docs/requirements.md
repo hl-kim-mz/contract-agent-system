@@ -34,7 +34,7 @@
 
 **서비스명**: Contract Agent System (CAS)
 
-메가존클라우드 영업팀이 고객사와 체결하는 다양한 계약서(NDA, MSA, SI 도급, SLA, 유지보수 등)를 업로드하면, **Orchestrator Agent + 3개의 전문가 Agent + MCP 클라이언트 + 코드 기반 로직**이 협력하여 **조항 분석 → 리스크 탐지 → 변경 이력 추적 → 내부 검토 라우팅 → 히스토리 검색 → 사내 규정 조회**를 자동 처리한다.
+메가존클라우드 영업팀이 고객사와 체결하는 다양한 계약서(NDA, MSA, SI 도급, SLA, 유지보수 등)를 업로드하면, **Orchestrator Agent + 4개의 전문가 Agent + MCP 클라이언트 + 코드 기반 로직**이 협력하여 **조항 분석 → 리스크 탐지 → 변경 이력 추적 → 내부 검토 라우팅 → 히스토리 검색 → 사내 규정 조회**를 자동 처리한다.
 
 ### 설계 원칙
 
@@ -111,16 +111,21 @@ SFDC 영업기회 생성
 │                                                        │
 │  ┌─────────────────┐  ┌─────────────────┐              │
 │  │ ParsingAgent     │  │ RiskAgent        │              │
-│  │ as_tool(Haiku)   │  │ as_tool(Sonnet)  │              │
+│  │ as_tool(Haiku4.5)│  │ as_tool(Sonnet)  │              │
 │  └────────┬────────┘  └────────┬────────┘              │
 │           ↓                     ↓                       │
 │  Rule Engine (Python if/else — 변경 없음, 안정성 유지)  │
 │           ↓                                             │
 │  ┌─────────────────┐  ┌─────────────────┐              │
-│  │ SearchAgent      │  │ MCP Client       │              │
-│  │ as_tool(Haiku)   │  │ (mcp-server-     │              │
-│  │ KB retrieve      │  │  sqlite)         │              │
+│  │ SearchAgent      │  │ LegalReviewAgent │              │
+│  │ as_tool(Haiku4.5)│  │ as_tool(Haiku4.5)│              │
+│  │ KB retrieve      │  │ 법무 검토 라우팅  │              │
 │  └─────────────────┘  └─────────────────┘              │
+│  ┌─────────────────┐                                   │
+│  │ MCP Client       │                                   │
+│  │ (mcp-server-     │                                   │
+│  │  sqlite)         │                                   │
+│  └─────────────────┘                                   │
 │                                                        │
 │  ── Bedrock Guardrails ──                              │
 │  입력: PII/Prompt Attack 차단                           │
@@ -137,9 +142,10 @@ SFDC 영업기회 생성
 |-----------|------|------|
 | **DOCX 파서** | 코드 (python-docx) | 텍스트·표 추출은 확정적 처리 — LLM 불필요 |
 | **Orchestrator Agent** | AI Agent (Sonnet) | as_tool()로 전문가 에이전트 자율 선택·호출 |
-| **ParsingAgent** | AI Agent (Haiku) | DOCX 파서 결과를 구조화된 Contract JSON으로 정제 |
+| **ParsingAgent** | AI Agent (Haiku 4.5) | DOCX 파서 결과를 구조화된 Contract JSON으로 정제 |
 | **RiskAgent** | AI Agent (Sonnet) | 법적 리스크 판단, 재무 분석 — 도메인 지식 기반 추론 필수 |
-| **SearchAgent** | AI Agent (Haiku) | 자연어 질의 → Bedrock KB 시맨틱 검색 + 답변 생성 |
+| **SearchAgent** | AI Agent (Haiku 4.5) | 자연어 질의 → Bedrock KB 시맨틱 검색 + 답변 생성 |
+| **LegalReviewAgent** | AI Agent (Haiku 4.5) | 법무 검토 라우팅 판단 + 검토 의견 구조화 |
 | **MCP Client** | 표준 프로토콜 | mcp-server-sqlite로 사내 컴플라이언스 규정 DB 자율 쿼리 |
 | Diff 로직 | 코드 (tool) | 조항 단위 비교 — difflib SequenceMatcher |
 | Workflow 라우팅 | 코드 (Rule Engine) | MZC 내부 라우팅 기준은 if/else로 충분 |
@@ -341,11 +347,11 @@ REJECTED        ↔  계약검토 반려 → 수정 요청
 
 ---
 
-## 4. 화면 목록 (UI — Streamlit)
+## 4. 화면 목록 (UI — Next.js 14)
 
 | 화면 | 주요 기능 |
 |------|-----------|
-| **업로드 & 대시보드** | 계약서 목록, 상태별 필터, DOCX 드래그&드롭 업로드, 고객사·유형 선택, `st.spinner` 진행 표시 |
+| **업로드 & 대시보드** | 계약서 목록, 상태별 필터, DOCX 드래그&드롭 업로드, 고객사·유형 선택, 로딩 진행 표시 |
 | **리스크 리포트** | 전체 리스크 요약 + 조항별 리스크 목록 + 색상 코딩된 리스크 뱃지 (HIGH: red, MEDIUM: orange, LOW: green) + 워크플로우 승인/반려 Mock |
 | **Diff 뷰** (탭) | 이전 버전 대비 조항별 변경사항 비교 (difflib 기반) + 리스크 영향 요약 |
 | **검색 & MCP** | RAG 자연어 검색 (Bedrock KB) + MCP 사내 규정 조회 + 채팅 인터페이스 |
@@ -357,7 +363,7 @@ REJECTED        ↔  계약검토 반려 → 수정 요청
 > 저장소: Amazon S3 (DOCX + 파싱 JSON) + DynamoDB (구조화 데이터) + Bedrock Knowledge Base (Plan B: BM25)
 
 ```
-[S3] cas-contracts-{팀명}/
+[S3] cas-contracts-megathon-26743/
   {customer_name}/{contract_id}/v{version}.docx        ← 원본 DOCX
   {customer_name}/{contract_id}/v{version}.json        ← 파싱 결과 (KB 인덱싱 대상)
 
@@ -402,7 +408,7 @@ REJECTED        ↔  계약검토 반려 → 수정 요청
 | 단계 | 환경 | LLM | 이유 |
 |------|------|-----|------|
 | **사전 개발** | 로컬 | Groq (Llama 3.3 70B) — 무료 | API Key 즉시 발급, 무료 한도 충분 |
-| **해커톤 당일** | EC2 | AWS Bedrock Sonnet + Haiku | Orchestrator/RiskAgent=Sonnet, ParsingAgent/SearchAgent=Haiku |
+| **해커톤 당일** | EC2 | AWS Bedrock Sonnet 4 + Haiku 4.5 | Orchestrator/RiskAgent=Sonnet 4, ParsingAgent/SearchAgent/LegalReviewAgent=Haiku 4.5 |
 
 > ⚠️ **당일 필수**: `.env`의 `MODEL_PROVIDER=groq` → `MODEL_PROVIDER=bedrock` 변경 후 AWS credentials 입력
 
@@ -424,7 +430,7 @@ REJECTED        ↔  계약검토 반려 → 수정 요청
 
 | 영역 | 기술 | 선택 이유 |
 |------|------|-----------|
-| Frontend | **Streamlit** | 4페이지+탭, Python 단일 스택, 빠른 프로토타이핑 |
+| Frontend | **Next.js 14** | 4페이지+탭, React 기반, FastAPI 백엔드 연동 |
 | Backend | Python (FastAPI) | Strands SDK Python 네이티브 지원 |
 | DOCX 파싱 | python-docx | Word 문서 텍스트·표 추출 |
 | 조항 Diff | **difflib** | 조항 단위 SequenceMatcher 비교 (stdlib, 외부 의존성 없음) |
@@ -441,8 +447,8 @@ REJECTED        ↔  계약검토 반려 → 수정 요청
 from strands import Agent, tool
 from strands.models import BedrockModel
 
-sonnet = BedrockModel(model_id="anthropic.claude-sonnet-4-20250514", region_name="us-west-2")
-haiku  = BedrockModel(model_id="anthropic.claude-haiku-4-20250414", region_name="us-west-2")
+sonnet = BedrockModel(model_id="anthropic.claude-sonnet-4-20250514", region_name="ap-northeast-2")
+haiku  = BedrockModel(model_id="anthropic.claude-haiku-4-5-20251001-v1:0", region_name="ap-northeast-2")
 
 @tool
 def check_risk(clause: str, contract_type: str) -> dict:
@@ -464,9 +470,10 @@ def search_history(query: str) -> dict:
     """Bedrock KB 시맨틱 검색"""
     ...
 
-parsing_agent = Agent(model=haiku, tools=[...])
-risk_agent    = Agent(model=sonnet, tools=[check_risk, diff_clauses, analyze_financials])
-search_agent  = Agent(model=haiku, tools=[search_history])
+parsing_agent      = Agent(model=haiku, tools=[...])
+risk_agent         = Agent(model=sonnet, tools=[check_risk, diff_clauses, analyze_financials])
+search_agent       = Agent(model=haiku, tools=[search_history])
+legal_review_agent = Agent(model=haiku, tools=[...])
 
 orchestrator = Agent(
     model=sonnet,
@@ -474,6 +481,7 @@ orchestrator = Agent(
         parsing_agent.as_tool(),
         risk_agent.as_tool(),
         search_agent.as_tool(),
+        legal_review_agent.as_tool(),
     ]
 )
 ```
@@ -505,7 +513,7 @@ orchestrator = Agent(
    └─ overall_risk × MZC 라우팅 매트릭스 → 검토자 목록 생성
       (계약팀 → 법무팀 → 본부장 순차 / 재무팀·기술법무 병렬)
 
-4. DynamoDB 업데이트 + Streamlit UI 반영
+4. DynamoDB 업데이트 + Next.js UI 반영
 
 --- 별도 흐름 ---
 5. 사용자 검색 질의 → Orchestrator → SearchAgent (Haiku, as_tool) → Bedrock KB retrieve
@@ -537,7 +545,7 @@ orchestrator = Agent(
 
 | 시간 | 행동 | 심사 항목 |
 |------|------|----------|
-| **0:00~0:15** | AWS URL 접속 → "클라우드에 배포된 계약 분석 에이전트입니다" | 완성도(배포) |
+| **0:00~0:15** | AWS URL 접속 → "클라우드에 배포된 계약 분석 에이전트입니다" (Next.js UI) | 완성도(배포) |
 | **0:15~0:40** | DOCX 업로드 → AI 리스크 리포트 실시간 생성 (HIGH 3건) | 고객임팩트 + 완성도 |
 | **0:40~0:55** | "무제한 배상, CR 절차 미정의" → 법무팀 자동 에스컬레이션 | 에이전트 자율성 |
 | **0:55~1:10** | 채팅: "사내 규정 확인해줘" → MCP가 SQLite 자율 쿼리 | 기술혁신(MCP) |
@@ -547,7 +555,7 @@ orchestrator = Agent(
 
 ### 데모 상세 시나리오
 
-1. **[URL 접속]** EC2 퍼블릭 URL에서 Streamlit 앱 접속 (클라우드 배포 증명)
+1. **[URL 접속]** EC2 퍼블릭 URL에서 Next.js 앱 접속 (클라우드 배포 증명)
 2. **[Upload]** 영업팀 담당자가 고객사 SI 도급 계약서 DOCX 업로드 (비표준계약)
 3. **[Risk]** RiskAgent가 HIGH 리스크 3건 탐지
    - 무제한 배상책임 (배상한도 미설정)
@@ -580,7 +588,7 @@ orchestrator = Agent(
 | **T+1:00~1:30** | ParsingAgent (Haiku) + as_tool() 래핑 | |
 | **T+1:30~2:30** | RiskAgent (Sonnet) + analyze_financials + Guardrails API 연동 + Orchestrator Agent | **핵심 블록** |
 | **T+2:30~3:00** | SearchAgent + KB 연동 (실패 시 BM25) | |
-| **T+3:00~3:30** | Streamlit UI — 업로드 + 리포트 + Diff + 검색 | |
+| **T+3:00~3:30** | Next.js UI — 업로드 + 리포트 + Diff + 검색 | |
 | **T+3:30~4:00** | Rule Engine 라우팅 + 승인 UI + 통합 테스트 | |
 | **T+4:00~4:30** | EC2 Docker Compose 배포 (실패 시 ngrok) | 배포 보강 |
 | **T+4:30~5:00** | **데모 리허설 + 버그픽스 — 절대 타협 없음** | |
@@ -593,7 +601,7 @@ orchestrator = Agent(
 |------|--------|--------|--------|
 | Agent 프레임워크 | Strands SDK | boto3 직접 호출 | — |
 | 검색 | Bedrock KB | BM25 + AI 요약 | str.find + Mock |
-| 프론트엔드 | Streamlit | FastAPI Swagger | Jupyter |
+| 프론트엔드 | Next.js 14 | FastAPI Swagger | Jupyter |
 | 배포 | EC2 Docker | ngrok 터널 | 로컬 데모 |
 | 보안 | Bedrock Guardrails | 프롬프트 내 규칙 | 데모 스킵 |
 | MCP | mcp-server-sqlite | 직접 SQLite 쿼리 | — |

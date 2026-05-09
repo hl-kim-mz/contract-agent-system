@@ -7,357 +7,144 @@ import PromptBadge from './PromptBadge';
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
-const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
+const TYPES: { value: ContractType; label: string }[] = [
   { value: null,           label: 'Default (전체 공통)' },
   { value: 'NDA',         label: 'NDA' },
   { value: 'MSA',         label: 'MSA' },
   { value: 'SI',          label: 'SI 도급' },
   { value: 'SLA',         label: 'SLA' },
-  { value: 'Maintenance', label: 'Maintenance' },
+  { value: 'Maintenance', label: '유지보수' },
 ];
 
-interface PromptEditorProps {
-  prompt: PromptTemplate | null;
-  isNew: boolean;
-  onSaved: (saved: PromptTemplate) => void;
-}
+interface Props { prompt: PromptTemplate | null; isNew: boolean; onSaved: (p: PromptTemplate) => void; }
 
-export default function PromptEditor({ prompt, isNew, onSaved }: PromptEditorProps) {
-  const [name, setName]               = useState('');
-  const [contractType, setContractType] = useState<ContractType>(null);
-  const [body, setBody]               = useState('');
-  const [saveStatus, setSaveStatus]   = useState<SaveStatus>('idle');
-  const [isDirty, setIsDirty]         = useState(false);
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const originalRef = useRef<PromptTemplate | null>(null);
+export default function PromptEditor({ prompt, isNew, onSaved }: Props) {
+  const [name, setName]           = useState('');
+  const [ctype, setCtype]         = useState<ContractType>(null);
+  const [body, setBody]           = useState('');
+  const [status, setStatus]       = useState<SaveStatus>('idle');
+  const [dirty, setDirty]         = useState(false);
+  const [editName, setEditName]   = useState(false);
+  const [savedAt, setSavedAt]     = useState<string | null>(null);
+  const origRef = useRef<PromptTemplate | null>(null);
 
-  // prompt 변경 시 폼 초기화
   useEffect(() => {
-    if (prompt) {
-      setName(prompt.prompt_name);
-      setContractType(prompt.contract_type);
-      setBody(prompt.system_prompt);
-      setIsDirty(false);
-      setSaveStatus('idle');
-      setLastSavedAt(prompt.updated_at);
-      originalRef.current = prompt;
-    } else if (isNew) {
-      setName('새 프롬프트');
-      setContractType(null);
-      setBody('');
-      setIsDirty(false);
-      setSaveStatus('idle');
-      setLastSavedAt(null);
-      originalRef.current = null;
-    }
-    setIsEditingName(false);
+    if (prompt) { setName(prompt.prompt_name); setCtype(prompt.contract_type); setBody(prompt.system_prompt); setSavedAt(prompt.updated_at); origRef.current = prompt; }
+    else if (isNew) { setName('새 프롬프트'); setCtype(null); setBody(''); setSavedAt(null); origRef.current = null; }
+    setDirty(false); setStatus('idle'); setEditName(false);
   }, [prompt, isNew]);
 
-  const markDirty = useCallback(() => setIsDirty(true), []);
+  const mark = useCallback(() => setDirty(true), []);
 
-  const handleSave = async () => {
-    setSaveStatus('saving');
+  const save = async () => {
+    setStatus('saving');
     try {
-      const payload = { prompt_name: name, contract_type: contractType, system_prompt: body };
-      let saved: PromptTemplate;
-      if (isNew || !prompt) {
-        saved = await createPrompt(payload);
-      } else {
-        saved = await updatePrompt(prompt.id, payload);
-      }
-      setSaveStatus('saved');
-      setIsDirty(false);
-      setLastSavedAt(saved.updated_at);
-      onSaved(saved);
-      setTimeout(() => setSaveStatus('idle'), 1500);
-    } catch {
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    }
+      const payload = { prompt_name: name, contract_type: ctype, system_prompt: body };
+      const saved = isNew || !prompt ? await createPrompt(payload) : await updatePrompt(prompt.id, payload);
+      setStatus('saved'); setDirty(false); setSavedAt(saved.updated_at); onSaved(saved);
+      setTimeout(() => setStatus('idle'), 1500);
+    } catch { setStatus('error'); setTimeout(() => setStatus('idle'), 2000); }
   };
 
-  const handleReset = () => {
-    if (!window.confirm('저장하지 않은 변경사항이 사라집니다. 초기화하시겠습니까?')) return;
-    const original = originalRef.current;
-    if (original) {
-      setName(original.prompt_name);
-      setContractType(original.contract_type);
-      setBody(original.system_prompt);
-      setIsDirty(false);
-    } else {
-      setName('새 프롬프트');
-      setContractType(null);
-      setBody('');
-    }
+  const reset = () => {
+    if (!confirm('변경사항을 되돌리겠습니까?')) return;
+    const o = origRef.current;
+    if (o) { setName(o.prompt_name); setCtype(o.contract_type); setBody(o.system_prompt); setDirty(false); }
+    else { setName('새 프롬프트'); setCtype(null); setBody(''); }
   };
 
-  if (!prompt && !isNew) {
-    return (
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'column',
-          gap: '12px',
-          color: '#6B6B78',
-        }}
-      >
-        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-        <p style={{ fontSize: '14px', margin: 0 }}>왼쪽 목록에서 프롬프트를 선택하거나 새로 만드세요</p>
-      </div>
-    );
-  }
+  if (!prompt && !isNew) return (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af' }}>
+      <p style={{ fontSize: 13 }}>왼쪽에서 프롬프트를 선택하거나 새로 만드세요</p>
+    </div>
+  );
 
-  const saveLabel = saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved ✓' : saveStatus === 'error' ? 'Error' : '저장';
-  const saveBg    = saveStatus === 'saved' ? '#30A46C' : saveStatus === 'error' ? '#E5484D' : '#5E6AD2';
+  const saveLabel = status === 'saving' ? '저장 중…' : status === 'saved' ? '저장됨 ✓' : status === 'error' ? '오류' : '저장';
+  const saveBg = status === 'saved' ? '#16a34a' : status === 'error' ? '#dc2626' : '#1d4ed8';
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        overflow: 'hidden',
-        backgroundColor: '#0A0A0B',
-      }}
-    >
-      {/* 상단 헤더 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '14px 20px',
-          borderBottom: '1px solid #1E1E22',
-          backgroundColor: '#111113',
-        }}
-      >
-        {/* 이름 인라인 편집 */}
-        {isEditingName ? (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => { setName(e.target.value); markDirty(); }}
-            onBlur={() => setIsEditingName(false)}
-            onKeyDown={(e) => { if (e.key === 'Enter') setIsEditingName(false); }}
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', backgroundColor: '#fff' }}>
+      {/* 헤더 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 20px', borderBottom: '1px solid #e5e7eb',
+        backgroundColor: '#fff',
+      }}>
+        {editName ? (
+          <input autoFocus value={name}
+            onChange={e => { setName(e.target.value); mark(); }}
+            onBlur={() => setEditName(false)}
+            onKeyDown={e => { if (e.key === 'Enter') setEditName(false); }}
             style={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#F0F0F1',
-              backgroundColor: '#1E1E22',
-              border: '1px solid #5E6AD2',
-              borderRadius: '4px',
-              padding: '4px 8px',
-              outline: 'none',
-              flex: 1,
-              maxWidth: '320px',
-              fontFamily: 'Inter, -apple-system, sans-serif',
+              fontSize: 15, fontWeight: 600, color: '#111827',
+              border: '1px solid #3b82f6', borderRadius: 4,
+              padding: '3px 8px', outline: 'none', flex: 1, maxWidth: 280,
             }}
           />
         ) : (
-          <span
-            onClick={() => setIsEditingName(true)}
-            title="클릭하여 이름 편집"
-            style={{
-              fontSize: '16px',
-              fontWeight: 600,
-              color: '#F0F0F1',
-              cursor: 'text',
-              padding: '4px 0',
-              borderBottom: '1px dashed #3E3E46',
-            }}
-          >
+          <span onClick={() => setEditName(true)} title="클릭하여 수정"
+            style={{ fontSize: 15, fontWeight: 600, color: '#111827', cursor: 'text', borderBottom: '1px dashed #d1d5db', paddingBottom: 1 }}>
             {name}
           </span>
         )}
 
-        {/* 계약 유형 드롭다운 */}
-        <select
-          value={contractType ?? ''}
-          onChange={(e) => {
-            const v = e.target.value;
-            setContractType((v === '' ? null : v) as ContractType);
-            markDirty();
-          }}
-          style={{
-            fontSize: '13px',
-            color: '#F0F0F1',
-            backgroundColor: '#1E1E22',
-            border: '1px solid #2E2E36',
-            borderRadius: '4px',
-            padding: '5px 8px',
-            cursor: 'pointer',
-            outline: 'none',
-            transition: 'border-color 0.15s ease',
-            fontFamily: 'Inter, -apple-system, sans-serif',
-          }}
-        >
-          {CONTRACT_TYPES.map((ct) => (
-            <option key={String(ct.value)} value={ct.value ?? ''}>
-              {ct.label}
-            </option>
-          ))}
+        <select value={ctype ?? ''} onChange={e => { setCtype((e.target.value || null) as ContractType); mark(); }}
+          style={{ fontSize: 12, border: '1px solid #d1d5db', borderRadius: 4, padding: '4px 8px', color: '#374151', backgroundColor: '#fff', cursor: 'pointer', outline: 'none' }}>
+          {TYPES.map(t => <option key={String(t.value)} value={t.value ?? ''}>{t.label}</option>)}
         </select>
+        <PromptBadge contractType={ctype} size="md" />
 
-        <PromptBadge contractType={contractType} size="md" />
-
-        {/* 스페이서 */}
         <div style={{ flex: 1 }} />
 
-        {/* 초기화 버튼 */}
-        <button
-          onClick={handleReset}
-          disabled={!isDirty}
-          style={{
-            padding: '6px 14px',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: isDirty ? '#6B6B78' : '#3E3E46',
-            backgroundColor: 'transparent',
-            border: '1px solid #2E2E36',
-            borderRadius: '4px',
-            cursor: isDirty ? 'pointer' : 'not-allowed',
-            transition: 'all 0.15s ease',
-            fontFamily: 'Inter, -apple-system, sans-serif',
-          }}
-        >
+        <button onClick={reset} disabled={!dirty}
+          style={{ padding: '6px 12px', fontSize: 12, color: dirty ? '#374151' : '#d1d5db', backgroundColor: 'transparent', border: '1px solid #e5e7eb', borderRadius: 4, cursor: dirty ? 'pointer' : 'not-allowed' }}>
           초기화
         </button>
-
-        {/* 저장 버튼 */}
-        <button
-          onClick={handleSave}
-          disabled={saveStatus === 'saving'}
-          style={{
-            padding: '6px 16px',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: '#FFFFFF',
-            backgroundColor: saveBg,
-            border: 'none',
-            borderRadius: '4px',
-            cursor: saveStatus === 'saving' ? 'not-allowed' : 'pointer',
-            transition: 'all 0.15s ease',
-            minWidth: '80px',
-            fontFamily: 'Inter, -apple-system, sans-serif',
-          }}
-          onMouseEnter={(e) => {
-            if (saveStatus === 'idle') (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#6E7AE2';
-          }}
-          onMouseLeave={(e) => {
-            if (saveStatus === 'idle') (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#5E6AD2';
-          }}
-        >
+        <button onClick={save} disabled={status === 'saving'}
+          style={{ padding: '6px 14px', fontSize: 12, fontWeight: 500, color: '#fff', backgroundColor: saveBg, border: 'none', borderRadius: 4, cursor: 'pointer', minWidth: 72 }}
+          onMouseEnter={e => { if (status === 'idle') (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1e40af'; }}
+          onMouseLeave={e => { if (status === 'idle') (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1d4ed8'; }}>
           {saveLabel}
         </button>
       </div>
 
-      {/* 에디터 영역 */}
-      <div
-        style={{
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '20px',
-          gap: '8px',
-          overflow: 'hidden',
-        }}
-      >
-        {/* 라벨 */}
-        <label
-          style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            color: '#6B6B78',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-        >
+      {/* 에디터 */}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '16px 20px', gap: 8, overflow: 'hidden' }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
           System Prompt
         </label>
-
-        {/* Textarea */}
-        <textarea
-          value={body}
-          onChange={(e) => { setBody(e.target.value); markDirty(); }}
+        <textarea value={body}
+          onChange={e => { setBody(e.target.value); mark(); }}
           spellCheck={false}
           style={{
-            flex: 1,
-            minHeight: '400px',
-            width: '100%',
-            padding: '16px',
-            fontSize: '13px',
-            lineHeight: 1.6,
-            color: '#F0F0F1',
-            backgroundColor: '#0D0D0F',
-            border: '1px solid #1E1E22',
-            borderRadius: '6px',
-            outline: 'none',
-            resize: 'vertical',
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace",
-            transition: 'border-color 0.15s ease',
+            flex: 1, minHeight: 400, width: '100%', padding: 16,
+            fontSize: 13, lineHeight: 1.65, color: '#111827',
+            backgroundColor: '#fafafa',
+            border: '1px solid #e5e7eb', borderRadius: 6,
+            outline: 'none', resize: 'vertical',
+            fontFamily: "'JetBrains Mono', 'Fira Code', monospace",
             boxSizing: 'border-box',
           }}
-          onFocus={(e) => { e.currentTarget.style.borderColor = '#5E6AD2'; }}
-          onBlur={(e) => { e.currentTarget.style.borderColor = '#1E1E22'; }}
+          onFocus={e => (e.currentTarget.style.borderColor = '#3b82f6')}
+          onBlur={e => (e.currentTarget.style.borderColor = '#e5e7eb')}
         />
       </div>
 
-      {/* 하단 상태바 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          padding: '8px 20px',
-          borderTop: '1px solid #1E1E22',
-          backgroundColor: '#111113',
-          gap: '16px',
-        }}
-      >
-        {/* 글자수 */}
-        <span style={{ fontSize: '12px', color: '#6B6B78' }}>
-          {body.length.toLocaleString()} chars
-        </span>
-
-        {/* 스페이서 */}
+      {/* 하단 */}
+      <div style={{
+        display: 'flex', alignItems: 'center', padding: '8px 20px',
+        borderTop: '1px solid #f3f4f6',
+        backgroundColor: '#fafafa',
+        gap: 12,
+      }}>
+        <span style={{ fontSize: 11, color: '#9ca3af' }}>{body.length.toLocaleString()} chars</span>
         <div style={{ flex: 1, textAlign: 'center' }}>
-          <span style={{ fontSize: '12px', color: '#6B6B78' }}>
-            {isDirty ? '● 저장되지 않은 변경사항' : lastSavedAt ? `Saved ${formatRelativeTime(lastSavedAt)}` : ''}
+          <span style={{ fontSize: 11, color: dirty ? '#f59e0b' : '#9ca3af' }}>
+            {dirty ? '● 미저장 변경사항' : savedAt ? `저장됨 · ${formatRelativeTime(savedAt)}` : ''}
           </span>
         </div>
-
-        {/* 테스트 실행 버튼 */}
-        <button
-          style={{
-            padding: '4px 12px',
-            fontSize: '12px',
-            fontWeight: 500,
-            color: '#5E6AD2',
-            backgroundColor: 'transparent',
-            border: '1px solid #2D2D6B',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            fontFamily: 'Inter, -apple-system, sans-serif',
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1A1A3E';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-          }}
-          onClick={() => alert('테스트 실행 기능은 개발 예정입니다.')}
-        >
+        <button onClick={() => alert('테스트 기능 준비 중')}
+          style={{ fontSize: 11, color: '#3b82f6', backgroundColor: 'transparent', border: '1px solid #bfdbfe', borderRadius: 4, padding: '3px 10px', cursor: 'pointer' }}>
           테스트 실행
         </button>
       </div>

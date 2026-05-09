@@ -9,7 +9,7 @@
 
 ## 1. 시스템 개요
 
-> 계약서 DOCX를 업로드하면 3개의 AI Agent가 협력하여 리스크 탐지 → 버전 비교 → 검토 라우팅 → 히스토리 검색을 자동 처리하는 Multi-Agent 계약 검토 시스템
+> 계약서 DOCX를 업로드하면 4개의 AI Agent가 협력하여 파싱 → 리스크 탐지 → 버전 비교 → 검토 라우팅 → 히스토리 검색을 자동 처리하는 Multi-Agent 계약 검토 시스템
 
 ### 전체 아키텍처 다이어그램
 
@@ -29,12 +29,16 @@
 ┌──────────────┐ ┌─────────────────────────┐ ┌──────────────────┐
 │  DOCX 파서   │ │  Strands Agent SDK       │ │  Rule Engine     │
 │  (코드 기반) │ │  ┌───────────────────┐  │ │  (코드 기반)     │
-│              │ │  │   Risk Agent      │  │ │                  │
-│ python-docx  │ │  │  ├─ check_risk    │  │ │ 리스크 레벨 ×   │
-│ + regex      │ │  │  ├─ diff_prev     │  │ │ 계약 유형 ×     │
-│              │ │  │  └─ analyze_fin   │  │ │ 금액 조건 →     │
-│ Contract JSON│ │  └───────────────────┘  │ │ 검토자 목록     │
-└──────┬───────┘ │  ┌───────────────────┐  │ └──────┬───────────┘
+│              │ │  │   ParsingAgent    │  │ │                  │
+│ python-docx  │ │  │  └─ parse_docx   │  │ │ 리스크 레벨 ×   │
+│ + regex      │ │  └───────────────────┘  │ │ 계약 유형 ×     │
+│              │ │  ┌───────────────────┐  │ │ 금액 조건 →     │
+│ Contract JSON│ │  │    RiskAgent      │  │ │ 검토자 목록     │
+└──────┬───────┘ │  │  ├─ check_risk    │  │ └──────┬───────────┘
+       │         │  │  ├─ diff_clauses  │  │        │
+       │         │  │  └─ analyze_fin   │  │        │
+       │         │  └───────────────────┘  │        │
+       │         │  ┌───────────────────┐  │        │
        │         │  │  Search Agent     │  │        │
        │         │  │  └─ search_history│  │        │
        │         │  └───────────────────┘  │        │
@@ -48,8 +52,8 @@
 │  │ Amazon S3 │  │  Amazon        │  │  AWS Bedrock     │   │
 │  │           │  │  DynamoDB      │  │                  │   │
 │  │ DOCX 원본 │  │                │  │ ┌──────────────┐ │   │
-│  │ JSON 파싱 │  │ cas-contracts  │  │ │ Claude 3.5   │ │   │
-│  │ 결과 저장 │  │ cas-risk-reports│  │ │ Sonnet v2    │ │   │
+│  │ JSON 파싱 │  │ cas-contracts  │  │ │ Claude       │ │   │
+│  │ 결과 저장 │  │ cas-risk-reports│  │ │ Sonnet 4     │ │   │
 │  │           │  │ cas-workflow   │  │ └──────────────┘ │   │
 │  └───────────┘  │ cas-prompts    │  │ ┌──────────────┐ │   │
 │       │         └────────────────┘  │ │ Knowledge    │ │   │
@@ -74,11 +78,11 @@
 | **표준/비표준 판별** | 코드 (템플릿 코드 매칭) | MZC 표준 템플릿 식별 — 규칙으로 충분 |
 | **당사자/날짜/금액 추출** | 코드 (regex) | 패턴이 명확한 구조화 데이터 추출 |
 | **조항 단위 분리** | 코드 (python-docx 스타일) | "제N조" 헤딩 기준 — 확정적 |
-| **버전 간 Diff 비교** | 코드 (deepdiff) | JSON 구조 비교 — 확정적, 빠름 |
+| **버전 간 Diff 비교** | 코드 (difflib) | JSON 구조 비교 — 확정적, 빠름 |
 | **검토 라우팅 결정** | 코드 (Rule Engine, if/else) | 리스크 레벨 × 금액 조건 매트릭스 — 일관성 필요 |
-| **리스크 조항 탐지** | **AI (Risk Agent)** | 법적 맥락 이해, MZC 기준 대비 판단 — AI 필수 |
-| **손익·재무 리스크 분석** | **AI (Risk Agent)** | 비정형 금융 조건 해석 — AI 필수 |
-| **Diff 리스크 영향 요약** | **AI (Risk Agent)** | 변경 의미의 법적 해석 — AI 필수 |
+| **리스크 조항 탐지** | **AI (RiskAgent)** | 법적 맥락 이해, MZC 기준 대비 판단 — AI 필수 |
+| **손익·재무 리스크 분석** | **AI (RiskAgent)** | 비정형 금융 조건 해석 — AI 필수 |
+| **Diff 리스크 영향 요약** | **AI (RiskAgent)** | 변경 의미의 법적 해석 — AI 필수 |
 | **자연어 계약 히스토리 검색** | **AI (Search Agent)** | 의미 기반 유사 검색 + 답변 생성 — AI 필수 |
 
 ---
@@ -100,25 +104,26 @@ orchestrator = Agent(
     ]
 )
 
-risk_agent  = Agent(model=model, tools=[check_risk, diff_with_previous, analyze_financials])
-search_agent = Agent(model=model, tools=[search_contract_history])
+parsing_agent = Agent(model=get_model_haiku(), tools=[parse_docx])
+risk_agent    = Agent(model=get_model(), tools=[check_risk, diff_clauses, analyze_financials])
+search_agent  = Agent(model=get_model_haiku(), tools=[search_contract_history])
 ```
 
 ```
 [Orchestrator Agent]
      │
-     ├──→ parse_contract()          ← 코드 함수 (Agent 아님)
-     │         └─ Contract JSON 생성
+     ├──→ parsing_agent.as_tool()   ← Sub-Agent (ParsingAgent, Haiku 4)
+     │         └─ parse_docx()      ← Contract JSON 생성
      │
-     ├──→ risk_agent.as_tool()     ← Sub-Agent (Strands Agent-as-Tool)
+     ├──→ risk_agent.as_tool()      ← Sub-Agent (RiskAgent, Sonnet 4)
      │         ├─ check_risk()      ← LLM tool: 리스크 탐지
-     │         ├─ diff_with_previous() ← 코드+LLM 혼합 tool
+     │         ├─ diff_clauses()    ← 코드+LLM 혼합 tool
      │         └─ analyze_financials() ← LLM tool: 재무 리스크
      │
      └──→ route_reviewers()         ← 코드 함수 (Agent 아님)
                └─ 검토자 목록 생성
 
-[Search Agent]  ← 독립 실행 (별도 엔드포인트)
+[Search Agent]  ← 독립 실행 (별도 엔드포인트, Haiku 4)
      └─ search_contract_history()  ← Bedrock KB retrieve_and_generate
 ```
 
@@ -161,7 +166,7 @@ search_agent = Agent(model=model, tools=[search_contract_history])
 
 ---
 
-### 3-3. Risk Agent (AI Agent)
+### 3-3. RiskAgent (AI Agent)
 
 **역할**: Contract JSON + MZC 기준 프롬프트 → Risk Report JSON
 
@@ -173,9 +178,9 @@ search_agent = Agent(model=model, tools=[search_contract_history])
   │    ├─ LLM 추론: 조항별 리스크 탐지 (9가지 유형)
   │    └─ 출력: clause_risks[], overall_risk, key_concerns
   │
-  ├─ Tool 2: diff_with_previous()
+  ├─ Tool 2: diff_clauses()
   │    ├─ 코드: DynamoDB에서 이전 버전 Contract JSON 조회
-  │    ├─ 코드: deepdiff로 조항 변경점 추출 (확정적)
+  │    ├─ 코드: difflib로 조항 변경점 추출 (확정적)
   │    └─ LLM: 변경된 조항의 리스크 영향 요약 (해석 필요)
   │
   └─ Tool 3: analyze_financials()
@@ -242,7 +247,7 @@ Risk Report JSON 스키마에 맞게 반환.
        │    ├─ 쿼리 임베딩: Titan Embeddings V2
        │    ├─ 벡터 검색: OpenSearch Serverless (kNN)
        │    ├─ 메타데이터 필터: customer_name (선택적)
-       │    └─ LLM 답변 생성: Claude 3.5 Sonnet v2
+       │    └─ LLM 답변 생성: Claude Haiku 4
        │
 출력:
   {
@@ -284,10 +289,10 @@ S3 (*.json 파싱 결과)
    │                 │                     │─ DynamoDB INSERT ───→ │ DB
    │                 │                     │─ KB Sync 트리거 ─────→ │ KB
    │                 │                     │                      │
-   │                 │─ risk_agent() ─────→│                      │
+   │                 │─ risk_agent() ──────→│                      │
    │                 │   (Strands SDK)      │─ check_risk          │
    │                 │                     │   (LLM, ~30s)        │
-   │                 │                     │─ diff_with_previous  │
+   │                 │                     │─ diff_clauses        │
    │                 │                     │   (코드+LLM)         │
    │                 │                     │─ analyze_financials  │
    │                 │                     │   (LLM)              │
@@ -402,7 +407,7 @@ PK: id (String)
 GSI: contract_type (NDA|MSA|SI|SLA|Maintenance|Outsourcing|All)
 속성:
   prompt_name      String    프롬프트 이름
-  system_prompt    String    Legal Agent 시스템 프롬프트 전문
+  system_prompt    String    RiskAgent 시스템 프롬프트 전문
   mzc_baseline     String    MZC 허용 기준 규칙 블록
   is_default       Boolean   계약 유형 기본값 여부
   updated_at       String    ISO8601
@@ -416,7 +421,7 @@ cas-contracts ──1:1──→ cas-risk-reports
      │
      └──1:N──→ cas-workflow-steps
 
-cas-prompt-templates ──(조회)──→ Risk Agent 실행 시
+cas-prompt-templates ──(조회)──→ RiskAgent 실행 시
                                   system_prompt 주입
 
 S3 ──(자동 동기화)──→ Bedrock KB ──(벡터 검색)──→ Search Agent
@@ -431,10 +436,10 @@ S3 ──(자동 동기화)──→ Bedrock KB ──(벡터 검색)──→ S
 | 기술 | 선택 이유 | 대안 대비 장점 |
 |------|---------|---------------|
 | **AWS Strands Agent SDK** | 해커톤 공식 권장 SDK, Agent-as-Tool 패턴으로 계층적 Multi-Agent 구현 | LangGraph 대비 AWS 서비스 네이티브 통합, 코드 단순성 |
-| **AWS Bedrock Claude 3.5 Sonnet v2** | 계약서 법적 추론 최고 성능, 긴 컨텍스트 처리 | GPT-4o 대비 AWS 에코시스템 통합, 비용 관리 용이 |
+| **AWS Bedrock Claude Sonnet 4** | 계약서 법적 추론 최고 성능, 긴 컨텍스트 처리 | GPT-4o 대비 AWS 에코시스템 통합, 비용 관리 용이 |
 | **Bedrock Knowledge Bases + OpenSearch Serverless** | 자동 청킹·임베딩·인덱싱·검색 완전 관리형, retrieve_and_generate API 단일 호출 | 자체 구축 벡터 DB 대비 운영 부담 없음, 해커톤 당일 15분 내 프로비저닝 |
 | **Amazon Titan Embeddings V2** | Bedrock KB 기본 임베딩, 한국어 포함 다국어 지원 | 외부 임베딩 API 불필요 |
-| **python-docx + deepdiff** | LLM 없이 계약서 파싱·버전 비교 처리 → 비용 절감 + 정확도 향상 | LLM 파싱 대비 100% 재현 가능한 구조화 결과 |
+| **python-docx + difflib** | LLM 없이 계약서 파싱·버전 비교 처리 → 비용 절감 + 정확도 향상 | LLM 파싱 대비 100% 재현 가능한 구조화 결과 |
 | **FastAPI** | Python 네이티브 (Strands SDK와 동일 런타임), 비동기 처리, 자동 OpenAPI 문서 | Flask 대비 성능·타입 안전성, Django 대비 경량 |
 | **Next.js 14 + App Router** | SSR + 실시간 polling 지원, Tailwind CSS로 빠른 UI 구현 | React SPA 대비 SEO·초기 로딩 개선 |
 | **Amazon DynamoDB** | 서버리스, 키-값 조회 O(1), JSON 중첩 구조 네이티브 저장 | RDS 대비 스키마 변경 유연성, 운영 비용 없음 |
@@ -445,7 +450,7 @@ S3 ──(자동 동기화)──→ Bedrock KB ──(벡터 검색)──→ S
 **Q: 왜 Parsing을 Agent가 아닌 코드로 처리하는가?**  
 A: 계약서 구조화는 확정적 작업(텍스트 추출, 패턴 매칭)이다. LLM으로 처리 시 비용 발생, 결과 비결정성(hallucination), 처리 시간 증가. python-docx + regex로 100% 재현 가능한 Contract JSON을 생성한다.
 
-**Q: 왜 Diff를 코드(deepdiff)로 처리하는가?**  
+**Q: 왜 Diff를 코드(difflib)로 처리하는가?**  
 A: 버전 간 조항 변경점 비교는 JSON 구조 차이를 정확하게 추출해야 한다. LLM은 요약 능력은 뛰어나지만 정확한 diff 계산은 코드가 우월하다. CAS는 코드로 정확한 diff를 추출하고, LLM은 그 diff의 법적 의미만 해석한다.
 
 **Q: 왜 검토 라우팅을 Rule Engine(코드)으로 처리하는가?**  
@@ -478,10 +483,10 @@ A: MZC 내부 라우팅 기준은 명확한 조건 매트릭스(리스크 레벨
 │                                                                  │
 │  MODEL_PROVIDER=bedrock                                         │
 │  ┌─────────────────────────────┐                               │
-│  │  AWS Bedrock                │  ← Claude 3.5 Sonnet v2       │
-│  │  ap-northeast-2             │  ← 최고 품질 법적 추론        │
-│  │  anthropic.claude-3-5-      │  ← 팀당 25만원 예산 내        │
-│  │  sonnet-20241022-v2:0       │  ← ($1~2 예상)               │
+│  │  AWS Bedrock                │  ← Claude Sonnet 4            │
+│  │  ap-northeast-2              │  ← 최고 품질 법적 추론        │
+│  │  claude-sonnet-4-20250514   │  ← 팀당 25만원 예산 내        │
+│  │  (RiskAgent)                │  ← ($1~2 예상)               │
 │  └─────────────────────────────┘                               │
 │                                                                  │
 │  저장소: S3 + DynamoDB + Bedrock KB (OpenSearch Serverless)     │
@@ -495,7 +500,15 @@ A: MZC 내부 라우팅 기준은 명확한 조건 매트릭스(리스크 레벨
 def get_model():
     if os.getenv("MODEL_PROVIDER") == "bedrock":
         return BedrockModel(
-            model_id="anthropic.claude-3-5-sonnet-20241022-v2:0",
+            model_id="anthropic.claude-sonnet-4-20250514",
+            region_name="ap-northeast-2"
+        )
+    return LiteLLMModel(model_id="groq/llama-3.3-70b-versatile")
+
+def get_model_haiku():
+    if os.getenv("MODEL_PROVIDER") == "bedrock":
+        return BedrockModel(
+            model_id="anthropic.claude-haiku-4-5-20251001-v1:0",
             region_name="ap-northeast-2"
         )
     return LiteLLMModel(model_id="groq/llama-3.3-70b-versatile")
@@ -524,7 +537,7 @@ def get_vector_store() -> VectorStoreAdapter:
 
 | 서비스 | 예상 사용량 | 예상 비용 |
 |--------|-----------|---------|
-| Bedrock Claude 3.5 Sonnet v2 | 계약서 20건 × 약 10,000 tokens | ~$1.50 |
+| Bedrock Claude Sonnet 4 (RiskAgent) | 계약서 20건 × 약 10,000 tokens | ~$1.50 |
 | Bedrock Knowledge Bases | 인덱싱 10MB + 검색 50회 | ~$0.30 |
 | OpenSearch Serverless | OCU 0.5 × 8h | ~$2.00 |
 | DynamoDB | 온디맨드, 소규모 | ~$0.10 |

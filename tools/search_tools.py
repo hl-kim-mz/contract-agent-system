@@ -1,3 +1,4 @@
+import json
 import os
 
 import boto3
@@ -13,19 +14,31 @@ def search_history(query: str) -> dict:
     Returns:
         검색 결과 + 생성된 답변
     """
+    kb_id = os.getenv("BEDROCK_KB_ID")
     region = os.getenv("AWS_REGION", "ap-northeast-2")
+
     client = boto3.client("bedrock-agent-runtime", region_name=region)
     response = client.retrieve_and_generate(
         input={"text": query},
         retrieveAndGenerateConfiguration={
             "type": "KNOWLEDGE_BASE",
             "knowledgeBaseConfiguration": {
-                "knowledgeBaseId": os.getenv("BEDROCK_KB_ID"),
-                "modelArn": f"arn:aws:bedrock:{region}:359469026743:inference-profile/apac.anthropic.claude-3-5-sonnet-20241022-v2:0",
+                "knowledgeBaseId": kb_id,
+                "modelArn": os.getenv(
+                    "KB_MODEL_ARN",
+                    f"arn:aws:bedrock:{region}::foundation-model/anthropic.claude-sonnet-4-20250514",
+                ),
             },
         },
     )
-    return {
-        "answer": response["output"]["text"],
-        "citations": [c["retrievedReferences"] for c in response.get("citations", [])],
-    }
+
+    output = response.get("output", {}).get("text", "")
+    sources = [
+        c.get("retrievedReferences", [])
+        for c in response.get("citations", [])
+    ]
+
+    return json.dumps({
+        "answer": output,
+        "sources": sources,
+    }, ensure_ascii=False)

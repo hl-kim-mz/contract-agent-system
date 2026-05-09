@@ -10,93 +10,40 @@ export default function PromptsPage() {
   const [prompts, setPrompts]       = useState<PromptTemplate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isNew, setIsNew]           = useState(false);
-  const [isDirtyGuard, setIsDirtyGuard] = useState(false);
+  const [dirty, setDirty]           = useState(false);
   const [loading, setLoading]       = useState(true);
 
-  // 초기 로드
   useEffect(() => {
-    getPrompts().then((data) => {
-      setPrompts(data);
-      if (data.length > 0) setSelectedId(data[0].id);
-    }).finally(() => setLoading(false));
+    getPrompts().then(d => { setPrompts(d); if (d.length) setSelectedId(d[0].id); }).finally(() => setLoading(false));
   }, []);
 
-  const selectedPrompt = prompts.find((p) => p.id === selectedId) ?? null;
+  const select = useCallback((p: PromptTemplate) => {
+    if (dirty && !confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
+    setSelectedId(p.id); setIsNew(false); setDirty(false);
+  }, [dirty]);
 
-  const handleSelect = useCallback(
-    (prompt: PromptTemplate) => {
-      if (isDirtyGuard) {
-        if (!window.confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
-      }
-      setSelectedId(prompt.id);
-      setIsNew(false);
-      setIsDirtyGuard(false);
-    },
-    [isDirtyGuard]
-  );
+  const newPrompt = useCallback(() => {
+    if (dirty && !confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
+    setSelectedId(null); setIsNew(true); setDirty(false);
+  }, [dirty]);
 
-  const handleNew = useCallback(() => {
-    if (isDirtyGuard) {
-      if (!window.confirm('저장하지 않은 변경사항이 있습니다. 계속하시겠습니까?')) return;
-    }
-    setSelectedId(null);
-    setIsNew(true);
-    setIsDirtyGuard(false);
-  }, [isDirtyGuard]);
-
-  const handleSaved = useCallback((saved: PromptTemplate) => {
-    setPrompts((prev) => {
-      const idx = prev.findIndex((p) => p.id === saved.id);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = saved;
-        return next;
-      }
-      return [saved, ...prev];
-    });
-    setSelectedId(saved.id);
-    setIsNew(false);
-    setIsDirtyGuard(false);
+  const saved = useCallback((p: PromptTemplate) => {
+    setPrompts(prev => { const i = prev.findIndex(x => x.id === p.id); if (i >= 0) { const n = [...prev]; n[i] = p; return n; } return [p, ...prev]; });
+    setSelectedId(p.id); setIsNew(false); setDirty(false);
   }, []);
+
+  const selected = prompts.find(p => p.id === selectedId) ?? null;
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        height: '100vh',
-        width: '100vw',
-        backgroundColor: '#0A0A0B',
-        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
-        color: '#F0F0F1',
-        overflow: 'hidden',
-      }}
-    >
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#fff', fontFamily: '-apple-system, sans-serif' }}>
       {loading ? (
-        <div
-          style={{
-            flex: 1,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#6B6B78',
-            fontSize: '14px',
-          }}
-        >
-          Loading prompts...
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9ca3af', fontSize: 13 }}>
+          불러오는 중…
         </div>
       ) : (
         <>
-          <PromptList
-            prompts={prompts}
-            selectedId={selectedId}
-            onSelect={handleSelect}
-            onNew={handleNew}
-          />
-          <PromptEditor
-            prompt={selectedPrompt}
-            isNew={isNew}
-            onSaved={handleSaved}
-          />
+          <PromptList prompts={prompts} selectedId={selectedId} onSelect={select} onNew={newPrompt} />
+          <PromptEditor prompt={selected} isNew={isNew} onSaved={saved} />
         </>
       )}
     </div>

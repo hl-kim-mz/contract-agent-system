@@ -21,7 +21,7 @@
 
 | 영역 | 채택 서비스 | 이유 | 난이도 |
 |------|------------|------|--------|
-| AI 추론 | **AWS Bedrock** (Claude 3.5 Sonnet v1) | 핵심 차별점 | ★★☆ |
+| AI 추론 | **AWS Bedrock** (Claude Sonnet 4 / Haiku 4.5) | 핵심 차별점 | ★★☆ |
 | Agent 오케스트레이션 | **AWS Strands SDK** | Bedrock 네이티브 연동 | ★★☆ |
 | 파일 저장 | **Amazon S3** | boto3 `put_object` 2~3줄, 무료 수준 | ★☆☆ |
 | 데이터 저장 | **Amazon DynamoDB** | NoSQL, 스키마 없이 즉시 사용 | ★★☆ |
@@ -45,7 +45,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 
 ### 당일 AWS 리소스 사전 생성 체크
 ```
-□ S3 버킷 생성: cas-contracts (리전: ap-northeast-2, 퍼블릭 차단)
+□ S3 버킷 생성: cas-contracts-megathon-26743 (리전: ap-northeast-2, 퍼블릭 차단)
 □ DynamoDB 테이블 생성:
      - cas-contracts      (PK: id, 타입: String)
      - cas-risk-reports   (PK: id, 타입: String)
@@ -59,7 +59,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 
 | 항목 | 예상 비용 | 비고 |
 |------|-----------|------|
-| Bedrock Claude 3.5 Sonnet v1 | ~$1~3 (약 1.5K~4K원) | 데모 30회 기준 |
+| Bedrock Claude Sonnet 4 / Haiku 4.5 | ~$1~3 (약 1.5K~4K원) | 데모 30회 기준 |
 | Amazon S3 | ~$0 | 무료 티어 (5GB) |
 | Amazon DynamoDB | ~$0 | 무료 티어 (25GB, 25 RCU/WCU) |
 | **합계** | **~2K~5K원** | 250K 중 2% 이내 |
@@ -78,7 +78,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 - [ ] Python 환경 세팅 (`pip install -r dependencies.txt`)
 - [ ] [Groq API Key 발급](https://console.groq.com) → `.env`에 `GROQ_API_KEY=` 입력
 - [ ] `.env`에 `MODEL_PROVIDER=groq` 설정 후 로컬 Agent 동작 검증
-- [ ] Parsing Agent + Risk Agent 구현 완료
+- [ ] ParsingAgent + RiskAgent 구현 완료
 - [ ] FastAPI 기본 엔드포인트 완성
 
 **해커톤 당일**
@@ -98,7 +98,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 
 **해커톤 전 (사전 준비)**
 - [ ] 샘플 계약서 DOCX 2종 준비 (버전 1 + 버전 2, Diff 시연용)
-- [ ] Risk Agent 프롬프트 설계 (리스크 탐지 기준 문서화)
+- [ ] RiskAgent 프롬프트 설계 (리스크 탐지 기준 문서화)
 - [ ] 발표 자료 초안 + 데모 시나리오 스크립트 작성
 
 **해커톤 당일**
@@ -145,7 +145,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 □ 검색창 → "Bedrock" 입력 → Amazon Bedrock 클릭
 □ 좌측 사이드바 → Model access 클릭
 □ "Manage model access" 버튼 클릭
-□ Anthropic 섹션 → Claude 3.5 Sonnet (20240620) 체크박스 선택
+□ Anthropic 섹션 → Claude Sonnet 4 및 Claude Haiku 4.5 체크박스 선택
 □ "Save changes" 클릭
 □ Access status: In Progress 확인 → 아래 STEP 2~3 진행하는 동안 대기
    (보통 1~5분, Access granted 상태 되면 사용 가능)
@@ -155,7 +155,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 □ Access Key / Secret Key 발급
 
 ── [STEP 2-1] AWS 리소스 생성 ─────────────────────────────────────────
-□ S3 → 버킷 생성: cas-contracts (리전: ap-northeast-2, 퍼블릭 차단 유지)
+□ S3 → 버킷 생성: cas-contracts-megathon-26743 (리전: ap-northeast-2, 퍼블릭 차단 유지)
 □ DynamoDB → 테이블 3개 생성 (리전: ap-northeast-2, 기본 설정):
      - cas-contracts      (파티션 키: id, String)
      - cas-risk-reports   (파티션 키: id, String)
@@ -174,7 +174,7 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 □ boto3 연결 테스트: python -c "import boto3; print('OK')"
 
 ── [STEP 4] 최종 확인 ──────────────────────────────────────────────────
-□ Bedrock Model access → Claude 3.5 Sonnet Access granted 상태 확인
+□ Bedrock Model access → Claude Sonnet 4 / Haiku 4.5 Access granted 상태 확인
 □ Agent 동작 테스트 실행
 ```
 
@@ -189,6 +189,6 @@ table.put_item(Item={"id": contract_id, "status": "DRAFT", ...})
 
 | 우선순위 | 기능 | 이유 |
 |---------|------|------|
-| **P0 필수** | Parsing + Risk Agent + 리스크 리포트 UI | 핵심 가치 증명 |
+| **P0 필수** | ParsingAgent + RiskAgent + 리스크 리포트 UI | 핵심 가치 증명 |
 | **P1 권장** | Workflow Agent + 승인 Mock UI | 완결성 |
 | **P2 선택** | Diff Agent | 시간 여유 시 구현 |
