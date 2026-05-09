@@ -7,7 +7,7 @@
 
 ## 1. 시스템 개요
 
-CAS는 메가존클라우드 영업팀이 고객사와 체결하는 계약서(NDA, MSA, SI 도급, SLA 등)를 업로드하면, **Orchestrator Agent + 3개 전문가 Agent + MCP Client**가 협력하여 조항 분석 → 리스크 탐지 → 변경 이력 추적 → 내부 검토 라우팅 → 히스토리 검색 → 사내 규정 조회를 자동 처리하는 시스템이다.
+CAS는 메가존클라우드 영업팀이 고객사와 체결하는 계약서(NDA, MSA, SI 도급, SLA 등)를 업로드하면, **Orchestrator Agent + 4개 전문가 Agent + MCP Client**가 협력하여 조항 분석 → 리스크 탐지 → 변경 이력 추적 → 내부 검토 라우팅 → 히스토리 검색 → 사내 규정 조회를 자동 처리하는 시스템이다.
 
 ### 핵심 가설
 
@@ -25,7 +25,7 @@ CAS는 메가존클라우드 영업팀이 고객사와 체결하는 계약서(ND
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                        Client (Streamlit)                        │
+│                    Client (Next.js 14 :3000)                     │
 │  업로드 & 대시보드 │ 리스크 리포트 │ Diff 뷰 │ 검색 & MCP        │
 └───────────────────────────┬──────────────────────────────────────┘
                             │ HTTP (REST API)
@@ -101,9 +101,10 @@ router → agent/service → tool → client
 |-----------|------|------|
 | DOCX 파서 | **코드** (python-docx) | 텍스트·표 추출은 확정적 처리 |
 | Orchestrator Agent | **AI** (Sonnet) | as_tool()로 전문가 에이전트 자율 선택·호출 |
-| ParsingAgent | **AI** (Haiku) | DOCX 파서 결과를 구조화된 JSON으로 정제 |
+| ParsingAgent | **AI** (Haiku 4.5) | DOCX 파서 결과를 구조화된 JSON으로 정제 |
 | RiskAgent | **AI** (Sonnet) | 법적 리스크 판단, 재무 분석 — 도메인 지식 기반 추론 |
-| SearchAgent | **AI** (Haiku) | 자연어 질의 → Bedrock KB 시맨틱 검색 |
+| SearchAgent | **AI** (Haiku 4.5) | 자연어 질의 → Bedrock KB 시맨틱 검색 |
+| LegalReviewAgent | **AI** (Haiku 4.5) | Risk Report 기반 법무 검토 의견서 작성 및 승인/반려 권고 |
 | MCP Client | **프로토콜** | mcp-server-sqlite로 컴플라이언스 규정 DB 자율 쿼리 |
 | Diff 로직 | **코드** (difflib) | 조항 단위 비교 — SequenceMatcher |
 | Workflow 라우팅 | **코드** (Rule Engine) | MZC 내부 라우팅 기준은 if/else로 충분 |
@@ -158,7 +159,7 @@ cas/                                     ← 프로젝트 루트
 | 단계 | 환경 | LLM | 이유 |
 |------|------|-----|------|
 | 사전 개발 | 로컬 | Groq (Llama 3.3 70B) | 무료, API Key 즉시 발급 |
-| 해커톤 당일 | EC2 | AWS Bedrock Sonnet + Haiku | Orchestrator/RiskAgent=Sonnet, ParsingAgent/SearchAgent=Haiku |
+| 해커톤 당일 | EC2 | AWS Bedrock Sonnet + Haiku 4.5 | Orchestrator/RiskAgent=Sonnet 4, ParsingAgent/SearchAgent/LegalReviewAgent=Haiku 4.5 |
 
 ### AWS 서비스
 
@@ -178,7 +179,7 @@ cas/                                     ← 프로젝트 루트
 
 | 영역 | 기술 | 선택 이유 |
 |------|------|-----------|
-| Frontend | Streamlit | Python 단일 스택, 빠른 프로토타이핑 |
+| Frontend | Next.js 14 | React 기반 풀스택 프레임워크, App Router |
 | Backend | FastAPI | Strands SDK Python 네이티브 |
 | DOCX 파싱 | python-docx | Word 텍스트·표 추출 |
 | 조항 Diff | difflib | stdlib, 외부 의존성 없음 |
@@ -193,7 +194,7 @@ cas/                                     ← 프로젝트 루트
 
 | 파일 | 위치 | 핵심 변수 |
 |------|------|-----------|
-| `.env` | `backend/` | MODEL_PROVIDER, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, GROQ_API_KEY, S3_BUCKET, BEDROCK_KB_ID |
+| `.env` | `backend/` | MODEL_PROVIDER, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION, GROQ_API_KEY, S3_BUCKET_NAME, BEDROCK_KB_ID, DYNAMODB_CONTRACTS_TABLE, DYNAMODB_RISK_REPORTS_TABLE, DYNAMODB_WORKFLOW_TABLE, DYNAMODB_PROMPTS_TABLE |
 | `.env.local` | `frontend/` | NEXT_PUBLIC_API_URL, NEXT_PUBLIC_USE_MOCK |
 | `.env.shared.example` | 루트 | 공통 키 목록 참고용 |
 
@@ -219,7 +220,7 @@ cas/                                     ← 프로젝트 루트
 |------|--------|--------|--------|
 | Agent 프레임워크 | Strands SDK | boto3 직접 호출 | — |
 | 검색 | Bedrock KB | BM25 + AI 요약 | str.find + Mock |
-| 프론트엔드 | Streamlit | FastAPI Swagger | Jupyter |
+| 프론트엔드 | Next.js 14 | FastAPI Swagger | Jupyter |
 | 배포 | EC2 Docker | ngrok 터널 | 로컬 데모 |
 | 보안 | Bedrock Guardrails | 프롬프트 내 규칙 | 데모 스킵 |
 | MCP | mcp-server-sqlite | 직접 SQLite 쿼리 | — |

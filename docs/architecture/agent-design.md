@@ -21,12 +21,12 @@ CAS는 Strands SDK의 `Agent`, `@tool`, `as_tool()` 패턴으로 Multi-Agent 파
 │    ├─ "사내 규정 확인해줘" → MCP (mcp-server-sqlite)         │
 │    └─ "이 조항 위험한가?" → RiskAgent 단독                    │
 │                                                              │
-│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐    │
-│  │ ParsingAgent  │  │ RiskAgent     │  │ SearchAgent   │    │
-│  │ (Haiku)       │  │ (Sonnet)      │  │ (Haiku)       │    │
-│  └───────┬───────┘  └───────┬───────┘  └───────┬───────┘    │
-│          │                  │                   │             │
-│  ┌───────┴──────────────────┴───────────────────┴──────────┐ │
+│  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  ┌───────────────┐  │
+│  │ ParsingAgent  │  │ RiskAgent     │  │ SearchAgent   │  │LegalReview    │  │
+│  │ (Haiku)       │  │ (Sonnet)      │  │ (Haiku)       │  │Agent (Haiku)  │  │
+│  └───────┬───────┘  └───────┬───────┘  └───────┬───────┘  └───────┬───────┘  │
+│          │                  │                   │              │             │
+│  ┌───────┴──────────────────┴───────────────────┴──────────────┴──────────┐ │
 │  │                      Tools                               │ │
 │  │ extract_docx │ check_risk │ diff_clauses │ search_hist  │ │
 │  │              │ analyze_fn │              │              │ │
@@ -47,7 +47,7 @@ CAS는 Strands SDK의 `Agent`, `@tool`, `as_tool()` 패턴으로 Multi-Agent 파
 
 | 속성 | 값 |
 |------|-----|
-| 모델 | Claude Sonnet (anthropic.claude-3-5-sonnet-20241022-v2:0, ap-northeast-2) |
+| 모델 | Claude Sonnet (anthropic.claude-sonnet-4-20250514, ap-northeast-2) |
 | 패턴 | as_tool()로 하위 에이전트를 도구로 노출 |
 | 입력 | 사용자 자연어 질의 또는 DOCX 업로드 트리거 |
 | 출력 | 하위 에이전트 실행 결과 종합 |
@@ -347,8 +347,8 @@ from strands import Agent, tool
 from agents.config import get_sonnet, get_haiku
 
 # 모델 정의 (ap-northeast-2)
-# Sonnet: anthropic.claude-3-5-sonnet-20241022-v2:0
-# Haiku:  anthropic.claude-3-5-haiku-20241022-v1:0
+# Sonnet: anthropic.claude-sonnet-4-20250514
+# Haiku:  anthropic.claude-haiku-4-5-20251001-v1:0
 sonnet = get_sonnet()
 haiku = get_haiku()
 

@@ -18,8 +18,8 @@
 │  │  │                                                   │     │   │
 │  │  │  ┌─────────────┐       ┌──────────────────┐      │     │   │
 │  │  │  │ backend     │       │ frontend         │      │     │   │
-│  │  │  │ (FastAPI)   │◄─────►│ (Streamlit)      │      │     │   │
-│  │  │  │ :8000       │       │ :8501            │      │     │   │
+│  │  │  │ (FastAPI)   │◄─────►│ (Next.js 14)     │      │     │   │
+│  │  │  │ :8000       │       │ :3000            │      │     │   │
 │  │  │  └──────┬──────┘       └──────────────────┘      │     │   │
 │  │  │         │                                         │     │   │
 │  │  │  ┌──────┴──────┐                                  │     │   │
@@ -36,8 +36,9 @@
 │  ┌──────────────┐ ┌──────────────┐ ┌────────────────────┐      │
 │  │ Amazon S3    │ │ DynamoDB     │ │ Bedrock            │      │
 │  │ cas-contracts│ │ (4 Tables)   │ │ Sonnet + Haiku     │      │
-│  │ -megathon    │ │              │ │ Guardrails         │      │
-│  └──────────────┘ └──────────────┘ │ Knowledge Base     │      │
+│  │ -megathon-   │ │              │ │ Guardrails         │      │
+│  │ 26743        │ │              │ │ Knowledge Base     │      │
+│  └──────────────┘ └──────────────┘ └────────────────────┘      │
 │                                     └────────────────────┘      │
 │                                              │                   │
 │                                     ┌────────┴───────┐          │
@@ -63,7 +64,7 @@
 | AMI | Amazon Linux 2023 |
 | 리전 | ap-northeast-2 (서울) |
 | 스토리지 | 30 GiB gp3 |
-| Security Group | 인바운드: 8501(Streamlit), 8000(API), 22(SSH) |
+| Security Group | 인바운드: 3000(Next.js), 8000(API), 22(SSH) |
 
 ### IAM Role 권한
 
@@ -90,8 +91,8 @@
         "s3:ListBucket"
       ],
       "Resource": [
-        "arn:aws:s3:::cas-contracts-megathon",
-        "arn:aws:s3:::cas-contracts-megathon/*"
+        "arn:aws:s3:::cas-contracts-megathon-26743",
+        "arn:aws:s3:::cas-contracts-megathon-26743/*"
       ]
     },
     {
@@ -144,9 +145,9 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "8501:8501"
+      - "3000:3000"
     environment:
-      - API_URL=http://backend:8000
+      - NEXT_PUBLIC_API_URL=http://backend:8000
     depends_on:
       - backend
     restart: unless-stopped
@@ -176,16 +177,18 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ### Frontend Dockerfile
 
 ```dockerfile
-FROM python:3.11-slim
+FROM node:20-slim
 
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt
+COPY package.json package-lock.json ./
+RUN npm ci
 
 COPY . .
-EXPOSE 8501
+RUN npm run build
 
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+EXPOSE 3000
+
+CMD ["npm", "start"]
 ```
 
 ---
@@ -205,7 +208,7 @@ AWS_REGION=ap-northeast-2
 AWS_DEFAULT_REGION=ap-northeast-2
 
 # === S3 ===
-S3_BUCKET=cas-contracts-megathon
+S3_BUCKET_NAME=cas-contracts-megathon-26743
 
 # === Bedrock ===
 BEDROCK_KB_ID=                  # Knowledge Base ID
@@ -222,10 +225,10 @@ DYNAMODB_WORKFLOW_TABLE=cas-workflow-steps
 DYNAMODB_PROMPTS_TABLE=cas-prompt-templates
 ```
 
-### frontend/.env.local (Streamlit인 경우)
+### frontend/.env.local (Next.js)
 
 ```bash
-API_URL=http://localhost:8000
+NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
 ---
@@ -262,7 +265,7 @@ response = bedrock_client.converse(
 | 항목 | 값 |
 |------|-----|
 | KB 이름 | cas-knowledge-base |
-| 데이터 소스 | S3 `cas-contracts-megathon` (파싱 JSON) |
+| 데이터 소스 | S3 `cas-contracts-megathon-26743` (파싱 JSON) |
 | 벡터 저장소 | OpenSearch Serverless (자동 프로비저닝) |
 | 임베딩 모델 | Amazon Titan Embeddings V2 |
 | 청킹 전략 | 기본값 (auto) |
@@ -277,7 +280,7 @@ response = bedrock_agent_client.retrieve_and_generate(
         "type": "KNOWLEDGE_BASE",
         "knowledgeBaseConfiguration": {
             "knowledgeBaseId": BEDROCK_KB_ID,
-            "modelArn": "arn:aws:bedrock:ap-northeast-2::foundation-model/anthropic.claude-haiku-4-20250414",
+            "modelArn": "arn:aws:bedrock:ap-northeast-2::foundation-model/anthropic.claude-sonnet-4-20250514",
             "retrievalConfiguration": {
                 "vectorSearchConfiguration": {
                     "numberOfResults": 5
@@ -343,10 +346,10 @@ aws dynamodb create-table \
 ## 8. S3 버킷 생성
 
 ```bash
-aws s3 mb s3://cas-contracts-megathon --region ap-northeast-2
+aws s3 mb s3://cas-contracts-megathon-26743 --region ap-northeast-2
 
-# CORS 설정 (Streamlit 직접 업로드 시)
-aws s3api put-bucket-cors --bucket cas-contracts-megathon --cors-configuration '{
+# CORS 설정 (Next.js 직접 업로드 시)
+aws s3api put-bucket-cors --bucket cas-contracts-megathon-26743 --cors-configuration '{
   "CORSRules": [
     {
       "AllowedHeaders": ["*"],
@@ -399,10 +402,10 @@ curl http://localhost:8000/health
 ```bash
 # 로컬에서 실행
 cd backend && uvicorn app.main:app --reload &
-cd frontend && streamlit run app.py &
+cd frontend && npm run dev &
 
 # ngrok 터널
-ngrok http 8501
+ngrok http 3000
 ```
 
 ### Plan C: 로컬 데모
@@ -410,8 +413,8 @@ ngrok http 8501
 ```bash
 cd backend && uvicorn app.main:app --reload
 # 별도 터미널
-cd frontend && streamlit run app.py
-# 브라우저에서 http://localhost:8501 접속
+cd frontend && npm run dev
+# 브라우저에서 http://localhost:3000 접속
 ```
 
 ---
@@ -447,7 +450,7 @@ logger.addHandler(watchtower.CloudWatchLogHandler(
 | 모델 버전 통일 (스택 표 ↔ 코드) | 사람 | MEDIUM | [ ] |
 | DynamoDB 4 테이블 생성 | 사람 | HIGH | [ ] |
 | S3 버킷 생성 | 사람 | HIGH | [ ] |
-| Security Group 포트 오픈 (8501, 8000) | 사람 | HIGH | [ ] |
+| Security Group 포트 오픈 (3000, 8000) | 사람 | HIGH | [ ] |
 
 ---
 
