@@ -4,12 +4,18 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Contract } from '@/lib/api/contracts';
 import type { ContractType } from '@/lib/api/prompts';
-import {
-  getContracts, uploadContract,
-  RISK_CONFIG, STATUS_CONFIG,
-  formatAmount, formatRelativeTime,
-} from '@/lib/api/contracts';
+import { getContracts, uploadContract, RISK_CONFIG, STATUS_CONFIG, formatAmount, formatRelativeTime } from '@/lib/api/contracts';
 import PromptBadge from '@/components/prompts/PromptBadge';
+
+type FilterKey = 'ALL' | 'PARSING' | 'RISK_REVIEWED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: 'ALL', label: '전체' },
+  { key: 'PARSING', label: '분석 중' },
+  { key: 'RISK_REVIEWED', label: '검토 대기' },
+  { key: 'PENDING_APPROVAL', label: '결재 대기' },
+  { key: 'APPROVED', label: '승인 완료' },
+  { key: 'REJECTED', label: '반려' },
+];
 
 const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
   { value: null,           label: '유형 선택' },
@@ -23,14 +29,15 @@ const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
 
 export default function ContractsPage() {
   const router = useRouter();
-  const [contracts, setContracts]   = useState<Contract[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [isDrag, setIsDrag]         = useState(false);
-  const [modal, setModal]           = useState(false);
-  const [uploading, setUploading]   = useState(false);
-  const [file, setFile]             = useState<File | null>(null);
-  const [customer, setCustomer]     = useState('');
-  const [ctype, setCtype]           = useState<ContractType>(null);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [filter, setFilter]       = useState<FilterKey>('ALL');
+  const [isDrag, setIsDrag]       = useState(false);
+  const [modal, setModal]         = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [file, setFile]           = useState<File | null>(null);
+  const [customer, setCustomer]   = useState('');
+  const [ctype, setCtype]         = useState<ContractType>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
@@ -64,57 +71,110 @@ export default function ContractsPage() {
     } finally { setUploading(false); }
   };
 
+  const visible = filter === 'ALL' ? contracts : contracts.filter(c => c.status === filter);
+
+  // 현황 카드 수치
+  const total    = contracts.length;
+  const highRisk = contracts.filter(c => c.overall_risk === 'HIGH').length;
+  const pending  = contracts.filter(c => c.status === 'PENDING_APPROVAL').length;
+  const approved = contracts.filter(c => c.status === 'APPROVED').length;
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', backgroundColor: '#f9fafb' }}>
+
       {/* 헤더 */}
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '14px 24px',
-        borderBottom: '1px solid #e5e7eb',
-        backgroundColor: '#fff',
-      }}>
-        <div>
-          <h1 style={{ fontSize: 15, fontWeight: 600, color: '#111827' }}>계약서 목록</h1>
-          <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 1 }}>{contracts.length}건</p>
+      <div style={{ padding: '20px 24px 0', backgroundColor: '#f9fafb' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: '#111827' }}>계약서 관리</h1>
+          <button
+            onClick={() => fileRef.current?.click()}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              padding: '8px 16px', fontSize: 13, fontWeight: 500,
+              color: '#fff', backgroundColor: '#1d4ed8',
+              border: 'none', borderRadius: 6, cursor: 'pointer',
+            }}
+            onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1e40af')}
+            onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1d4ed8')}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            계약서 업로드
+          </button>
+          <input ref={fileRef} type="file" accept=".docx,.pdf" style={{ display: 'none' }}
+            onChange={e => { const f = e.target.files?.[0]; if (f) openModal(f); }} />
         </div>
-        <button
-          onClick={() => fileRef.current?.click()}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '7px 14px', fontSize: 13, fontWeight: 500,
-            color: '#fff', backgroundColor: '#1d4ed8',
-            border: 'none', borderRadius: 5, cursor: 'pointer',
-          }}
-          onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1e40af')}
-          onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.backgroundColor = '#1d4ed8')}
-        >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-          </svg>
-          계약서 업로드
-        </button>
-        <input ref={fileRef} type="file" accept=".docx,.pdf" style={{ display: 'none' }}
-          onChange={e => { const f = e.target.files?.[0]; if (f) openModal(f); }} />
+
+        {/* 현황 카드 */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
+          {[
+            { label: '전체 계약', value: total, color: '#374151', bg: '#fff' },
+            { label: 'HIGH 리스크', value: highRisk, color: '#dc2626', bg: '#fff' },
+            { label: '결재 대기', value: pending, color: '#d97706', bg: '#fff' },
+            { label: '승인 완료', value: approved, color: '#16a34a', bg: '#fff' },
+          ].map(card => (
+            <div key={card.label} style={{
+              backgroundColor: card.bg,
+              border: '1px solid #e5e7eb',
+              borderRadius: 8,
+              padding: '14px 16px',
+            }}>
+              <p style={{ fontSize: 11, color: '#9ca3af', fontWeight: 500, marginBottom: 6, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {card.label}
+              </p>
+              <p style={{ fontSize: 24, fontWeight: 700, color: card.color }}>{card.value}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* 상태 필터 탭 */}
+        <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #e5e7eb' }}>
+          {FILTERS.map(f => (
+            <button
+              key={f.key}
+              onClick={() => setFilter(f.key)}
+              style={{
+                padding: '9px 14px', fontSize: 13,
+                fontWeight: filter === f.key ? 600 : 400,
+                color: filter === f.key ? '#1d4ed8' : '#6b7280',
+                borderBottom: `2px solid ${filter === f.key ? '#1d4ed8' : 'transparent'}`,
+                background: 'none', border: 'none',
+                borderBottomStyle: 'solid',
+                cursor: 'pointer', marginBottom: -1,
+                transition: 'all 0.1s',
+              }}
+            >
+              {f.label}
+              {f.key !== 'ALL' && contracts.filter(c => c.status === f.key).length > 0 && (
+                <span style={{
+                  marginLeft: 5, fontSize: 10, fontWeight: 600,
+                  padding: '1px 5px', borderRadius: 10,
+                  backgroundColor: filter === f.key ? '#eff6ff' : '#f3f4f6',
+                  color: filter === f.key ? '#1d4ed8' : '#9ca3af',
+                }}>
+                  {contracts.filter(c => c.status === f.key).length}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 본문 */}
+      {/* 테이블 영역 */}
       <div
-        style={{ flex: 1, overflowY: 'auto', padding: 24 }}
+        style={{ flex: 1, overflowY: 'auto', padding: '16px 24px 24px' }}
         onDragOver={e => { e.preventDefault(); setIsDrag(true); }}
         onDragLeave={() => setIsDrag(false)}
         onDrop={onDrop}
       >
         {loading ? (
-          <p style={{ color: '#9ca3af', textAlign: 'center', paddingTop: 60 }}>불러오는 중…</p>
+          <p style={{ color: '#9ca3af', textAlign: 'center', paddingTop: 60, fontSize: 13 }}>불러오는 중…</p>
         ) : (
           <>
-            {/* 테이블 */}
-            <div style={{
-              border: '1px solid #e5e7eb', borderRadius: 8,
-              overflow: 'hidden', backgroundColor: '#fff',
-            }}>
-              {/* 헤더 행 */}
+            <div style={{ border: '1px solid #e5e7eb', borderRadius: 8, overflow: 'hidden', backgroundColor: '#fff' }}>
+              {/* 테이블 헤더 */}
               <div style={{
                 display: 'grid',
                 gridTemplateColumns: '2.5fr 1fr 80px 90px 110px 90px 80px',
@@ -126,42 +186,34 @@ export default function ContractsPage() {
                 letterSpacing: '0.05em',
                 textTransform: 'uppercase',
               }}>
-                <span>계약서</span>
-                <span>고객사</span>
-                <span>유형</span>
-                <span>리스크</span>
-                <span>상태</span>
-                <span>금액</span>
-                <span>업로드</span>
+                <span>계약서</span><span>고객사</span><span>유형</span>
+                <span>리스크</span><span>상태</span><span>금액</span><span>업로드</span>
               </div>
 
-              {contracts.length === 0 ? (
-                <div style={{ padding: '40px 0', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
-                  아직 계약서가 없습니다
+              {visible.length === 0 ? (
+                <div style={{ padding: '48px 0', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
+                  해당 조건의 계약서가 없습니다
                 </div>
-              ) : contracts.map((c, i) => {
+              ) : visible.map((c, i) => {
                 const risk = c.overall_risk ? RISK_CONFIG[c.overall_risk] : null;
                 const st = STATUS_CONFIG[c.status];
                 const parsing = c.status === 'PARSING';
                 return (
-                  <div
-                    key={c.id}
+                  <div key={c.id}
+                    onClick={() => router.push(`/contracts/${c.id}`)}
                     style={{
                       display: 'grid',
                       gridTemplateColumns: '2.5fr 1fr 80px 90px 110px 90px 80px',
-                      padding: '11px 16px',
-                      borderBottom: i < contracts.length - 1 ? '1px solid #f3f4f6' : 'none',
+                      padding: '12px 16px',
+                      borderBottom: i < visible.length - 1 ? '1px solid #f3f4f6' : 'none',
                       alignItems: 'center', cursor: 'pointer',
                     }}
-                    onClick={() => router.push(`/contracts/${c.id}`)}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = '#f9fafb')}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent')}
                   >
                     <div>
                       <div style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{c.file_name}</div>
-                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>
-                        v{c.version} · {c.uploaded_by}
-                      </div>
+                      <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 2 }}>v{c.version} · {c.uploaded_by}</div>
                     </div>
                     <span style={{ fontSize: 13, color: '#374151' }}>{c.customer_name}</span>
                     <PromptBadge contractType={c.contract_type} />
@@ -172,8 +224,7 @@ export default function ContractsPage() {
                       </span>
                     ) : risk ? (
                       <span style={{
-                        display: 'inline-flex', alignItems: 'center',
-                        padding: '2px 7px', fontSize: 11, fontWeight: 600,
+                        display: 'inline-flex', padding: '2px 7px', fontSize: 11, fontWeight: 600,
                         borderRadius: 4, color: risk.color, backgroundColor: risk.bg,
                         border: `1px solid ${risk.color}25`,
                       }}>{risk.label}</span>
@@ -189,26 +240,23 @@ export default function ContractsPage() {
             </div>
 
             {/* 드래그앤드롭 */}
-            <div
-              onClick={() => fileRef.current?.click()}
+            <div onClick={() => fileRef.current?.click()}
               style={{
-                marginTop: 16,
-                border: `1.5px dashed ${isDrag ? '#3b82f6' : '#d1d5db'}`,
-                borderRadius: 8, padding: '20px',
-                display: 'flex', alignItems: 'center', gap: 10,
-                cursor: 'pointer', color: isDrag ? '#3b82f6' : '#9ca3af',
+                marginTop: 12, border: `1.5px dashed ${isDrag ? '#3b82f6' : '#d1d5db'}`,
+                borderRadius: 7, padding: '16px 20px',
+                display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer',
+                color: isDrag ? '#3b82f6' : '#9ca3af',
                 backgroundColor: isDrag ? '#eff6ff' : 'transparent',
-                transition: 'all 0.15s',
               }}
               onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#9ca3af'; }}
               onMouseLeave={e => { if (!isDrag) (e.currentTarget as HTMLDivElement).style.borderColor = '#d1d5db'; }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <span style={{ fontSize: 13 }}>
-                {isDrag ? '여기에 놓으세요' : 'DOCX / PDF 드래그하거나 클릭해서 업로드'}
+              <span style={{ fontSize: 12 }}>
+                {isDrag ? '여기에 놓으세요' : 'DOCX / PDF를 드래그하거나 클릭해서 업로드'}
               </span>
             </div>
           </>
@@ -217,82 +265,40 @@ export default function ContractsPage() {
 
       {/* 업로드 모달 */}
       {modal && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
-          }}
-          onClick={e => { if (e.target === e.currentTarget) setModal(false); }}
-        >
+        <div style={{
+          position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.25)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100,
+        }} onClick={e => { if (e.target === e.currentTarget) setModal(false); }}>
           <div style={{
-            backgroundColor: '#fff', borderRadius: 10,
-            border: '1px solid #e5e7eb',
-            padding: 24, width: 400,
-            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            backgroundColor: '#fff', borderRadius: 10, border: '1px solid #e5e7eb',
+            padding: 24, width: 400, boxShadow: '0 8px 24px rgba(0,0,0,0.08)',
           }}>
             <h2 style={{ fontSize: 15, fontWeight: 600, color: '#111827', marginBottom: 4 }}>계약서 업로드</h2>
             <p style={{ fontSize: 12, color: '#9ca3af', marginBottom: 20 }}>{file?.name}</p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>
-                  고객사명 *
-                </label>
-                <input
-                  autoFocus value={customer}
-                  onChange={e => setCustomer(e.target.value)}
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>고객사명 *</label>
+                <input autoFocus value={customer} onChange={e => setCustomer(e.target.value)}
                   placeholder="예: 주식회사 A사"
-                  style={{
-                    width: '100%', padding: '8px 10px', fontSize: 13,
-                    border: '1px solid #d1d5db', borderRadius: 5,
-                    outline: 'none', color: '#111827',
-                    boxSizing: 'border-box',
-                  }}
+                  style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 5, outline: 'none', color: '#111827', boxSizing: 'border-box' }}
                   onFocus={e => (e.currentTarget.style.borderColor = '#3b82f6')}
-                  onBlur={e => (e.currentTarget.style.borderColor = '#d1d5db')}
-                />
+                  onBlur={e => (e.currentTarget.style.borderColor = '#d1d5db')} />
               </div>
               <div>
-                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>
-                  계약 유형
-                </label>
-                <select
-                  value={ctype ?? ''}
-                  onChange={e => setCtype((e.target.value || null) as ContractType)}
-                  style={{
-                    width: '100%', padding: '8px 10px', fontSize: 13,
-                    border: '1px solid #d1d5db', borderRadius: 5,
-                    outline: 'none', color: '#111827', cursor: 'pointer',
-                    boxSizing: 'border-box', backgroundColor: '#fff',
-                  }}
-                >
-                  {CONTRACT_TYPES.map(t => (
-                    <option key={String(t.value)} value={t.value ?? ''}>{t.label}</option>
-                  ))}
+                <label style={{ fontSize: 12, fontWeight: 500, color: '#374151', display: 'block', marginBottom: 4 }}>계약 유형</label>
+                <select value={ctype ?? ''} onChange={e => setCtype((e.target.value || null) as ContractType)}
+                  style={{ width: '100%', padding: '8px 10px', fontSize: 13, border: '1px solid #d1d5db', borderRadius: 5, outline: 'none', color: '#111827', cursor: 'pointer', boxSizing: 'border-box', backgroundColor: '#fff' }}>
+                  {CONTRACT_TYPES.map(t => <option key={String(t.value)} value={t.value ?? ''}>{t.label}</option>)}
                 </select>
               </div>
             </div>
-
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 20 }}>
-              <button
-                onClick={() => setModal(false)}
-                style={{
-                  padding: '7px 14px', fontSize: 13, color: '#374151',
-                  backgroundColor: 'transparent', border: '1px solid #d1d5db',
-                  borderRadius: 5, cursor: 'pointer',
-                }}
-              >취소</button>
-              <button
-                onClick={doUpload}
-                disabled={!customer.trim() || uploading}
-                style={{
-                  padding: '7px 16px', fontSize: 13, fontWeight: 500,
-                  color: '#fff',
-                  backgroundColor: !customer.trim() || uploading ? '#93c5fd' : '#1d4ed8',
-                  border: 'none', borderRadius: 5,
-                  cursor: !customer.trim() || uploading ? 'not-allowed' : 'pointer',
-                }}
-              >
+              <button onClick={() => setModal(false)}
+                style={{ padding: '7px 14px', fontSize: 13, color: '#374151', backgroundColor: 'transparent', border: '1px solid #d1d5db', borderRadius: 5, cursor: 'pointer' }}>
+                취소
+              </button>
+              <button onClick={doUpload} disabled={!customer.trim() || uploading}
+                style={{ padding: '7px 16px', fontSize: 13, fontWeight: 500, color: '#fff', backgroundColor: !customer.trim() || uploading ? '#93c5fd' : '#1d4ed8', border: 'none', borderRadius: 5, cursor: !customer.trim() || uploading ? 'not-allowed' : 'pointer' }}>
                 {uploading ? '업로드 중…' : 'AI 분석 시작'}
               </button>
             </div>

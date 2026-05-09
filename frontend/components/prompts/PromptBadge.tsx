@@ -2,14 +2,15 @@ import type { ContractType } from '@/lib/api/prompts';
 
 interface Props { contractType: ContractType; size?: 'sm' | 'md'; }
 
+// 모든 유형 동일 색상 — 심플하게
 const CFG: Record<string, { label: string; color: string; bg: string }> = {
-  default:     { label: 'Default',  color: '#1d4ed8', bg: '#eff6ff' },
-  NDA:         { label: 'NDA',      color: '#dc2626', bg: '#fef2f2' },
-  MSA:         { label: 'MSA',      color: '#16a34a', bg: '#f0fdf4' },
-  SI:          { label: 'SI',       color: '#d97706', bg: '#fffbeb' },
-  SLA:         { label: 'SLA',      color: '#0891b2', bg: '#ecfeff' },
-  Maintenance: { label: 'MTC',      color: '#7c3aed', bg: '#f5f3ff' },
-  Outsourcing: { label: 'OUT',      color: '#0f766e', bg: '#f0fdfa' },
+  default:     { label: 'Default',  color: '#374151', bg: '#f3f4f6' },
+  NDA:         { label: 'NDA',      color: '#374151', bg: '#f3f4f6' },
+  MSA:         { label: 'MSA',      color: '#374151', bg: '#f3f4f6' },
+  SI:          { label: 'SI',       color: '#374151', bg: '#f3f4f6' },
+  SLA:         { label: 'SLA',      color: '#374151', bg: '#f3f4f6' },
+  Maintenance: { label: '유지보수', color: '#374151', bg: '#f3f4f6' },
+  Outsourcing: { label: '외주',     color: '#374151', bg: '#f3f4f6' },
 };
 
 export default function PromptBadge({ contractType, size = 'sm' }: Props) {
