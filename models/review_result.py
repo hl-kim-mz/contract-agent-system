@@ -6,28 +6,24 @@ from pydantic import BaseModel
 
 # === Enums ===
 class RiskLevel(str, Enum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
     HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
 
 
 class RiskType(str, Enum):
-    UNLIMITED_LIABILITY = "UNLIMITED_LIABILITY"
-    IP_OWNERSHIP = "IP_OWNERSHIP"
-    CONFIDENTIALITY_BREACH = "CONFIDENTIALITY_BREACH"
-    TERMINATION_RISK = "TERMINATION_RISK"
-    PAYMENT_RISK = "PAYMENT_RISK"
-    PENALTY_RISK = "PENALTY_RISK"
-    OTHER = "OTHER"
+    UNLIMITED_LIABILITY = "무제한_배상책임"
+    IP_FULL_TRANSFER = "IP_완전이전"
+    UNILATERAL_TERMINATION = "일방적_해지권"
+    EXCESSIVE_PENALTY = "과도한_지체상금"
+    CR_UNDEFINED = "CR_절차_미정의"
+    OTHER = "기타"
 
 
 class WorkflowStatus(str, Enum):
     PENDING = "PENDING"
-    IN_PROGRESS = "IN_PROGRESS"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
-    SKIPPED = "SKIPPED"
 
 
 # === Models ===
