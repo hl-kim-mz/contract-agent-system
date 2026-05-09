@@ -8,10 +8,11 @@ import {
   RISK_LEVEL_CFG, RISK_TYPE_LABEL,
   type ContractDetail, type RiskReport, type WorkflowStep, type DiffReport, type SearchResult,
 } from '@/lib/api/risk-reports';
+import CommentThread from '@/components/contracts/CommentThread';
 import PromptBadge from '@/components/prompts/PromptBadge';
 import type { ContractType } from '@/lib/api/prompts';
 
-type Tab = 'report' | 'diff' | 'workflow';
+type Tab = 'report' | 'diff' | 'workflow' | 'comments';
 
 const DIFF_COLOR = {
   ADDED:     { label: '추가', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
@@ -127,6 +128,7 @@ export default function ContractDetailPage() {
               ['report', `리스크 리포트${report ? ` (${report.clause_risks.length})` : ''}`],
               ['diff', diff ? `버전 비교 v${diff.from_version}→v${diff.to_version}` : '버전 비교'],
               ['workflow', `검토 워크플로우 (${steps.length}단계)`],
+              ['comments', '💬 코멘트'],
             ] as [Tab, string][]).map(([t, label]) => (
               <button key={t} onClick={() => setTab(t)}
                 style={{
@@ -333,6 +335,13 @@ export default function ContractDetailPage() {
                     })}
                   </div>
                 </>}
+              </div>
+            )}
+
+            {/* ── 코멘트 탭 ── */}
+            {tab === 'comments' && (
+              <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+                <CommentThread contractId={id} currentUserId="usr_001" />
               </div>
             )}
 
