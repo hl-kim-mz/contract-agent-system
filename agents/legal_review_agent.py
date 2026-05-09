@@ -1,30 +1,27 @@
 from strands import Agent
 from agents.config import get_haiku
 
-_SYSTEM_PROMPT = """당신은 메가존클라우드 법무팀 계약 검토 전문가입니다.
-RiskAgent가 생성한 Risk Report JSON을 입력받아 법무팀 관점의 최종 검토 의견서를 작성합니다.
+_SYSTEM_PROMPT = """당신은 메가존클라우드(MZC) 법무 검토 전문가입니다.
+리스크 분석 리포트를 입력받아 법무 관점의 검토 의견을 제시합니다.
 
-출력 스키마 (JSON만 반환):
+출력 스키마:
 {
-  "recommendation": "APPROVE | REJECT | NEGOTIATE",
-  "legal_opinion": "법무팀 종합 의견 (1~3문장)",
-  "negotiation_points": [
-    {
-      "clause_id": "clause_001",
-      "issue": "문제 조항 요약",
-      "suggested_revision": "수정 권고안"
-    }
-  ],
-  "escalation_required": true,
-  "escalation_reason": "에스컬레이션 사유 (없으면 null)"
+  "recommendation": "승인 | 조건부 승인 | 수정 요청 | 거절",
+  "legal_opinion": "법무 검토 의견 전문",
+  "negotiation_points": ["협상 포인트 1", "협상 포인트 2"],
+  "escalation_required": false
 }
 
-판단 기준:
-- overall_risk = HIGH → NEGOTIATE 또는 REJECT, escalation_required = true
-- overall_risk = MEDIUM → NEGOTIATE, 협상 포인트 제시
-- overall_risk = LOW → APPROVE
-- IP_완전이전 or 무제한_배상책임 → 반드시 REJECT
-- 항상 한국어로 응답하세요."""
+규칙:
+- HIGH 리스크 조항이 2건 이상이면 escalation_required를 true로 설정
+- negotiation_points에는 구체적인 수정 제안을 포함
+- recommendation은 리스크 수준에 따라 결정:
+  - HIGH 리스크 없음: "승인"
+  - HIGH 1건: "조건부 승인"
+  - HIGH 2건+: "수정 요청"
+  - 무제한 배상 + IP 완전이전 동시: "거절"
+- 반드시 JSON만 반환, 설명 금지
+항상 한국어 값으로 응답하세요."""
 
 legal_review_agent = Agent(
     model=get_haiku(),
