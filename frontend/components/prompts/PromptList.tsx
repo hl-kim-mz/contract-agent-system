@@ -4,145 +4,63 @@ import type { PromptTemplate } from '@/lib/api/prompts';
 import { formatRelativeTime } from '@/lib/api/prompts';
 import PromptBadge from './PromptBadge';
 
-interface PromptListProps {
+interface Props {
   prompts: PromptTemplate[];
   selectedId: string | null;
-  onSelect: (prompt: PromptTemplate) => void;
+  onSelect: (p: PromptTemplate) => void;
   onNew: () => void;
 }
 
-export default function PromptList({ prompts, selectedId, onSelect, onNew }: PromptListProps) {
+export default function PromptList({ prompts, selectedId, onSelect, onNew }: Props) {
   return (
-    <aside
-      style={{
-        width: '320px',
-        minWidth: '320px',
-        height: '100%',
-        backgroundColor: '#111113',
-        borderRight: '1px solid #1E1E22',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-      }}
-    >
-      {/* 헤더 */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '16px',
-          borderBottom: '1px solid #1E1E22',
-        }}
-      >
-        <span
-          style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            color: '#F0F0F1',
-            letterSpacing: '-0.01em',
-          }}
-        >
-          Prompts
-        </span>
+    <aside style={{
+      width: 280, minWidth: 280, height: '100%',
+      backgroundColor: '#f9fafb',
+      borderRight: '1px solid #e5e7eb',
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 16px',
+        borderBottom: '1px solid #e5e7eb',
+      }}>
+        <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>프롬프트</span>
         <button
           onClick={onNew}
           style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '4px',
-            padding: '4px 10px',
-            fontSize: '12px',
-            fontWeight: 500,
-            color: '#F0F0F1',
-            backgroundColor: '#5E6AD2',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
+            fontSize: 12, fontWeight: 500, color: '#1d4ed8',
+            backgroundColor: '#eff6ff', border: '1px solid #bfdbfe',
+            borderRadius: 4, padding: '3px 10px', cursor: 'pointer',
           }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#6E7AE2';
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#5E6AD2';
-          }}
-        >
-          + New
-        </button>
+        >+ 새로 만들기</button>
       </div>
 
-      {/* 목록 */}
-      <ul
-        style={{
-          listStyle: 'none',
-          margin: 0,
-          padding: 0,
-          overflowY: 'auto',
-          flex: 1,
-        }}
-      >
-        {prompts.map((prompt) => {
-          const isSelected = prompt.id === selectedId;
+      <ul style={{ listStyle: 'none', overflowY: 'auto', flex: 1 }}>
+        {prompts.map(p => {
+          const sel = p.id === selectedId;
           return (
-            <li key={prompt.id}>
+            <li key={p.id}>
               <button
-                onClick={() => onSelect(prompt)}
+                onClick={() => onSelect(p)}
                 style={{
-                  display: 'block',
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '12px 16px',
-                  cursor: 'pointer',
-                  border: 'none',
-                  backgroundColor: isSelected ? '#1A1A2E' : 'transparent',
-                  borderLeft: isSelected ? '2px solid #5E6AD2' : '2px solid transparent',
-                  transition: 'all 0.15s ease',
-                  paddingLeft: isSelected ? '14px' : '14px',
+                  display: 'block', width: '100%', textAlign: 'left',
+                  padding: '11px 16px', cursor: 'pointer', border: 'none',
+                  backgroundColor: sel ? '#eff6ff' : 'transparent',
+                  borderLeft: `2px solid ${sel ? '#1d4ed8' : 'transparent'}`,
+                  paddingLeft: 14,
                 }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#16161A';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent';
-                  }
-                }}
+                onMouseEnter={e => { if (!sel) (e.currentTarget as HTMLButtonElement).style.backgroundColor = '#f3f4f6'; }}
+                onMouseLeave={e => { if (!sel) (e.currentTarget as HTMLButtonElement).style.backgroundColor = 'transparent'; }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    marginBottom: '4px',
-                  }}
-                >
-                  <PromptBadge contractType={prompt.contract_type} />
-                  <span
-                    style={{
-                      fontSize: '14px',
-                      fontWeight: 500,
-                      color: '#F0F0F1',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {prompt.prompt_name}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3 }}>
+                  <PromptBadge contractType={p.contract_type} />
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {p.prompt_name}
                   </span>
                 </div>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    color: '#6B6B78',
-                  }}
-                >
-                  {formatRelativeTime(prompt.updated_at)}
-                </span>
+                <span style={{ fontSize: 11, color: '#9ca3af' }}>{formatRelativeTime(p.updated_at)}</span>
               </button>
-              <div style={{ height: '1px', backgroundColor: '#1E1E22', margin: '0 16px' }} />
+              <div style={{ height: 1, backgroundColor: '#f3f4f6', margin: '0 16px' }} />
             </li>
           );
         })}

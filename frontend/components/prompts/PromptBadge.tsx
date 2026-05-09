@@ -1,45 +1,35 @@
 import type { ContractType } from '@/lib/api/prompts';
 
-interface PromptBadgeProps {
-  contractType: ContractType;
-  size?: 'sm' | 'md';
-}
+interface Props { contractType: ContractType; size?: 'sm' | 'md'; }
 
-const BADGE_CONFIG: Record<string, { label: string; bg: string; text: string; border: string }> = {
-  default: { label: 'Default', bg: '#1A1A3E', text: '#5E6AD2', border: '#2D2D6B' },
-  NDA:     { label: 'NDA',     bg: '#2D1215', text: '#E5484D', border: '#5C1F23' },
-  MSA:     { label: 'MSA',     bg: '#0E2C1E', text: '#30A46C', border: '#1A5438' },
-  SI:      { label: 'SI',      bg: '#2C1A0A', text: '#F76B15', border: '#5C3410' },
-  SLA:     { label: 'SLA',     bg: '#0A1F30', text: '#0090FF', border: '#103D60' },
-  Maintenance: { label: 'MTC', bg: '#1F0D2C', text: '#8E4EC6', border: '#3E1A58' },
+const CFG: Record<string, { label: string; color: string; bg: string }> = {
+  default:     { label: 'Default',  color: '#1d4ed8', bg: '#eff6ff' },
+  NDA:         { label: 'NDA',      color: '#dc2626', bg: '#fef2f2' },
+  MSA:         { label: 'MSA',      color: '#16a34a', bg: '#f0fdf4' },
+  SI:          { label: 'SI',       color: '#d97706', bg: '#fffbeb' },
+  SLA:         { label: 'SLA',      color: '#0891b2', bg: '#ecfeff' },
+  Maintenance: { label: 'MTC',      color: '#7c3aed', bg: '#f5f3ff' },
+  Outsourcing: { label: 'OUT',      color: '#0f766e', bg: '#f0fdfa' },
 };
 
-export default function PromptBadge({ contractType, size = 'sm' }: PromptBadgeProps) {
+export default function PromptBadge({ contractType, size = 'sm' }: Props) {
   const key = contractType ?? 'default';
-  const config = BADGE_CONFIG[key] ?? BADGE_CONFIG['default'];
-
-  const padding = size === 'md' ? '3px 8px' : '2px 6px';
-  const fontSize = size === 'md' ? '12px' : '11px';
-
+  const cfg = CFG[key] ?? CFG['default'];
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        padding,
-        fontSize,
-        fontWeight: 500,
-        lineHeight: 1,
-        borderRadius: '4px',
-        backgroundColor: config.bg,
-        color: config.text,
-        border: `1px solid ${config.border}`,
-        letterSpacing: '0.02em',
-        fontFamily: 'Inter, -apple-system, sans-serif',
-        flexShrink: 0,
-      }}
-    >
-      {config.label}
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: size === 'md' ? '3px 8px' : '2px 6px',
+      fontSize: size === 'md' ? 12 : 11,
+      fontWeight: 500,
+      borderRadius: 4,
+      color: cfg.color,
+      backgroundColor: cfg.bg,
+      border: `1px solid ${cfg.color}30`,
+      flexShrink: 0,
+      letterSpacing: '0.01em',
+    }}>
+      {cfg.label}
     </span>
   );
 }

@@ -4,15 +4,15 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'CAS — Contract Agent System',
-  description: 'MZC 계약 리스크 분석 시스템',
+  description: 'MZC 계약 리스크 분석',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ko" style={{ colorScheme: 'dark' }}>
-      <body style={{ display: 'flex', minHeight: '100vh' }}>
+    <html lang="ko">
+      <body style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#ffffff' }}>
         <AppNav />
-        <main style={{ flex: 1, marginLeft: '200px', minHeight: '100vh', backgroundColor: '#0A0A0B' }}>
+        <main style={{ flex: 1, marginLeft: '200px', minHeight: '100vh', backgroundColor: '#ffffff' }}>
           {children}
         </main>
       </body>

@@ -160,19 +160,19 @@ export async function uploadContract(file: File, customerName: string, contractT
 
 // ─── 표시 헬퍼 ───────────────────────────────────────────────────
 export const RISK_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  HIGH:   { label: 'HIGH',   color: '#E5484D', bg: '#2D1215' },
-  MEDIUM: { label: 'MED',    color: '#F76B15', bg: '#2C1A0A' },
-  LOW:    { label: 'LOW',    color: '#30A46C', bg: '#0E2C1E' },
-  NONE:   { label: 'NONE',   color: '#6B6B78', bg: '#1A1A1E' },
+  HIGH:   { label: 'HIGH',   color: '#dc2626', bg: '#fef2f2' },
+  MEDIUM: { label: 'MED',    color: '#d97706', bg: '#fffbeb' },
+  LOW:    { label: 'LOW',    color: '#16a34a', bg: '#f0fdf4' },
+  NONE:   { label: 'NONE',   color: '#6b7280', bg: '#f9fafb' },
 };
 
 export const STATUS_CONFIG: Record<ContractStatus, { label: string; color: string }> = {
-  DRAFT:            { label: '대기',     color: '#6B6B78' },
-  PARSING:          { label: '분석중',   color: '#0090FF' },
-  RISK_REVIEWED:    { label: '검토완료', color: '#F76B15' },
-  PENDING_APPROVAL: { label: '결재대기', color: '#8E4EC6' },
-  APPROVED:         { label: '승인완료', color: '#30A46C' },
-  REJECTED:         { label: '반려',     color: '#E5484D' },
+  DRAFT:            { label: '대기',     color: '#9ca3af' },
+  PARSING:          { label: '분석중',   color: '#3b82f6' },
+  RISK_REVIEWED:    { label: '검토완료', color: '#d97706' },
+  PENDING_APPROVAL: { label: '결재대기', color: '#7c3aed' },
+  APPROVED:         { label: '승인완료', color: '#16a34a' },
+  REJECTED:         { label: '반려',     color: '#dc2626' },
 };
 
 export function formatAmount(amount: number | null): string {
