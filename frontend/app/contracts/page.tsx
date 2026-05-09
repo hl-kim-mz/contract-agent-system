@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Contract } from '@/lib/api/contracts';
 import type { ContractType } from '@/lib/api/prompts';
 import {
@@ -21,6 +22,7 @@ const CONTRACT_TYPES: { value: ContractType; label: string }[] = [
 ];
 
 export default function ContractsPage() {
+  const router = useRouter();
   const [contracts, setContracts]   = useState<Contract[]>([]);
   const [loading, setLoading]       = useState(true);
   const [isDrag, setIsDrag]         = useState(false);
@@ -151,6 +153,7 @@ export default function ContractsPage() {
                       borderBottom: i < contracts.length - 1 ? '1px solid #f3f4f6' : 'none',
                       alignItems: 'center', cursor: 'pointer',
                     }}
+                    onClick={() => router.push(`/contracts/${c.id}`)}
                     onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = '#f9fafb')}
                     onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent')}
                   >
