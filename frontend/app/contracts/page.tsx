@@ -207,7 +207,7 @@ export default function ContractsPage() {
             <div style={{ padding: '56px 0', textAlign: 'center', color: '#cbd5e1', fontSize: 13 }}>해당 조건의 계약서가 없습니다.</div>
           ) : visible.map((c, i) => {
             const risk    = c.overall_risk ? RISK_CONFIG[c.overall_risk] : null;
-            const st      = STATUS_CONFIG[c.status];
+            const st      = STATUS_CONFIG[c.status] ?? { label: c.status ?? '—', color: '#94a3b8', bg: 'transparent' };
             const parsing = c.status === 'PARSING';
             return (
               <div key={c.id}
