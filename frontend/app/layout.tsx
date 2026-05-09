@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import AppNav from '@/components/layout/AppNav';
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -9,7 +10,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko" style={{ colorScheme: 'dark' }}>
-      <body>{children}</body>
+      <body style={{ display: 'flex', minHeight: '100vh' }}>
+        <AppNav />
+        <main style={{ flex: 1, marginLeft: '200px', minHeight: '100vh', backgroundColor: '#0A0A0B' }}>
+          {children}
+        </main>
+      </body>
     </html>
   );
 }
