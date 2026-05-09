@@ -1,40 +1,33 @@
-import json
 import os
+from pathlib import Path
 
 from mcp import StdioServerParameters
 from strands import Agent
 from strands.tools.mcp import MCPClient
 
-from agents.config import get_model
+from agents.config import get_sonnet
 from agents.legal_agent import legal_agent
+from agents.parsing_agent import parsing_agent
 from agents.search_agent import search_agent
-from tools.clause_extractor import extract_clauses, extract_entities
-from tools.document_loader import load_docx
 
 _MCP_DB_PATH = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "data", "compliance.db")
 )
 
-_SYSTEM_PROMPT = (
-    "당신은 메가존클라우드 계약 분석 오케스트레이터입니다. "
-    "계약서를 분석하고, 사내 컴플라이언스 규정을 조회하여 종합 리스크 리포트를 작성합니다. "
-    "항상 한국어로 응답하세요."
-)
+_SYSTEM_PROMPT = """당신은 메가존클라우드의 계약 관리 시스템 Orchestrator입니다.
+사용자 입력에 따라 적절한 전문가 에이전트를 자율적으로 선택하여 호출합니다.
+
+[에이전트 선택 기준]
+- 계약서 업로드/파싱 → parsing_agent
+- 리스크 분석/Diff/재무분석 → legal_agent
+- 과거 이력 검색 → search_agent
+- 사내 규정 조회 → MCP 도구 (mcp-server-sqlite)
+
+항상 한국어로 응답하세요."""
 
 
-def analyze_contract(file_path: str) -> dict:
-    """DOCX 파일 파싱 → 리스크 분석 → 컴플라이언스 조회 → 종합 리포트 반환"""
-    doc = load_docx(file_path)
-    clauses = extract_clauses(doc["text"])
-    entities = extract_entities(doc["text"])
-
-    contract_data = {
-        "source_file": doc["source_file"],
-        "entities": entities,
-        "clauses": clauses,
-    }
-    contract_json = json.dumps(contract_data, ensure_ascii=False)
-
+def create_orchestrator() -> Agent:
+    """MCP 클라이언트 포함 Orchestrator 생성 (with 블록 내에서 사용)"""
     mcp_client = MCPClient(
         lambda: StdioServerParameters(
             command="npx",
@@ -42,30 +35,45 @@ def analyze_contract(file_path: str) -> dict:
         )
     )
 
-    model = get_model()
-
     with mcp_client:
-        orchestrator = Agent(
-            model=model,
+        return Agent(
+            model=get_sonnet(),
             system_prompt=_SYSTEM_PROMPT,
             tools=[
+                parsing_agent.as_tool(
+                    name="parsing_agent",
+                    description="DOCX 파서 결과를 구조화된 Contract JSON으로 정제",
+                ),
                 legal_agent.as_tool(
-                    tool_name="legal_risk_analyzer",
-                    description="계약서 조항별 MZC 기준 리스크 분석",
+                    name="legal_agent",
+                    description="MZC 기준 리스크 탐지, 조항 Diff, 재무 분석",
                 ),
                 search_agent.as_tool(
-                    tool_name="contract_history_searcher",
-                    description="Bedrock KB에서 유사 계약 이력 검색",
+                    name="search_agent",
+                    description="Bedrock KB 기반 계약서 히스토리 시맨틱 검색",
                 ),
                 *mcp_client.list_tools(),
             ],
         )
 
-        result = orchestrator(
-            f"다음 계약서를 분석하고, 사내 컴플라이언스 규정과 비교하여 리스크 리포트를 작성하세요:\n\n{contract_json}"
-        )
 
-    return {
-        "contract": contract_data,
-        "analysis": str(result),
-    }
+def create_orchestrator_simple() -> Agent:
+    """MCP 없이 간단하게 사용할 경우"""
+    return Agent(
+        model=get_sonnet(),
+        system_prompt=_SYSTEM_PROMPT,
+        tools=[
+            parsing_agent.as_tool(
+                name="parsing_agent",
+                description="DOCX 파서 결과를 구조화된 Contract JSON으로 정제",
+            ),
+            legal_agent.as_tool(
+                name="legal_agent",
+                description="MZC 기준 리스크 탐지, 조항 Diff, 재무 분석",
+            ),
+            search_agent.as_tool(
+                name="search_agent",
+                description="Bedrock KB 기반 계약서 히스토리 시맨틱 검색",
+            ),
+        ],
+    )
