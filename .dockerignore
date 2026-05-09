@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Local data & storage
+data/compliance.db
+storage/
+
+# Test files
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Frontend (빌드 결과물만 필요한 경우 제외 가능)
+frontend/node_modules/
+frontend/.next/
+frontend/.env*
+
+# Docs & samples
+docs/
+samples/
+
+# CI/CD
+.harness/
