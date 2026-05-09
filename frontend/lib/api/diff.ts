@@ -88,10 +88,10 @@ export async function getDiffReport(contractId: string): Promise<DiffReport | nu
 
 // ─── 표시 헬퍼 ───────────────────────────────────────────────────
 export const DIFF_COLOR: Record<DiffChangeType, { label: string; color: string; bg: string; border: string }> = {
-  ADDED:     { label: '추가', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-  REMOVED:   { label: '삭제', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  MODIFIED:  { label: '수정', color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-  UNCHANGED: { label: '유지', color: '#9ca3af', bg: '#f9fafb', border: '#e5e7eb' },
+  ADDED:     { label: '추가', color: '#4b5563', bg: '#f3f4f6', border: '#e5e7eb' },
+  REMOVED:   { label: '삭제', color: '#4b5563', bg: '#f3f4f6', border: '#e5e7eb' },
+  MODIFIED:  { label: '수정', color: '#4b5563', bg: '#f3f4f6', border: '#e5e7eb' },
+  UNCHANGED: { label: '유지', color: '#4b5563', bg: '#f3f4f6', border: '#e5e7eb' },
 };
 
 function delay(ms: number) { return new Promise<void>(r => setTimeout(r, ms)); }

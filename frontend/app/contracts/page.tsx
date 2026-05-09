@@ -6,6 +6,7 @@ import type { Contract } from '@/lib/api/contracts';
 import type { ContractType } from '@/lib/api/prompts';
 import { getContracts, uploadContract, RISK_CONFIG, STATUS_CONFIG, formatAmount, formatRelativeTime } from '@/lib/api/contracts';
 import PromptBadge from '@/components/prompts/PromptBadge';
+import DataPill from '@/components/ui/DataPill';
 
 type FilterKey = 'ALL' | 'PARSING' | 'RISK_REVIEWED' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED';
 
@@ -74,12 +75,11 @@ export default function ContractsPage() {
   const countBy = (status: string) => contracts.filter(c => c.status === status).length;
   const highCount = contracts.filter(c => c.overall_risk === 'HIGH').length;
 
-  // 통계 카드
   const stats = [
-    { label: '전체 계약',  value: contracts.length, color: '#374151', icon: '📄', border: '#e5e7eb' },
-    { label: 'HIGH 리스크', value: highCount,        color: '#dc2626', icon: '⚠️', border: '#fecaca' },
-    { label: '결재 대기',  value: countBy('PENDING_APPROVAL'), color: '#d97706', icon: '⏳', border: '#fde68a' },
-    { label: '승인 완료',  value: countBy('APPROVED'),         color: '#16a34a', icon: '✅', border: '#bbf7d0' },
+    { label: '전체 계약', value: contracts.length },
+    { label: 'HIGH 리스크', value: highCount },
+    { label: '결재 대기', value: countBy('PENDING_APPROVAL') },
+    { label: '승인 완료', value: countBy('APPROVED') },
   ];
 
   return (
@@ -110,12 +110,9 @@ export default function ContractsPage() {
         {/* ── 현황 카드 ── */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
           {stats.map(s => (
-            <div key={s.label} style={{ backgroundColor: '#fff', border: `1px solid ${s.border}`, borderRadius: 8, padding: '16px 18px', display: 'flex', alignItems: 'center', gap: 14 }}>
-              <span style={{ fontSize: 24 }}>{s.icon}</span>
-              <div>
-                <p style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, marginBottom: 4 }}>{s.label}</p>
-                <p style={{ fontSize: 28, fontWeight: 700, color: s.color, lineHeight: 1 }}>{s.value}</p>
-              </div>
+            <div key={s.label} style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, padding: '14px 16px' }}>
+              <p style={{ fontSize: 11, color: '#6b7280', fontWeight: 500, marginBottom: 4 }}>{s.label}</p>
+              <p style={{ fontSize: 26, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{s.value}</p>
             </div>
           ))}
         </div>
@@ -149,7 +146,7 @@ export default function ContractsPage() {
       >
         <div style={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderTop: 'none', borderRadius: '0 0 8px 8px', overflow: 'hidden' }}>
           {/* 컬럼 헤더 */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 80px 100px 110px 90px 80px', padding: '10px 20px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: 11, fontWeight: 600, color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 88px 88px 110px 90px 80px', padding: '10px 20px', backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', fontSize: 11, fontWeight: 600, color: '#9ca3af', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
             <span>계약서</span><span>고객사</span><span>유형</span>
             <span>리스크</span><span>상태</span><span>금액</span><span>업로드</span>
           </div>
@@ -165,7 +162,7 @@ export default function ContractsPage() {
             return (
               <div key={c.id}
                 onClick={() => router.push(`/contracts/${c.id}`)}
-                style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 80px 100px 110px 90px 80px', padding: '13px 20px', borderBottom: i < visible.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' }}
+                style={{ display: 'grid', gridTemplateColumns: '2.5fr 1.2fr 88px 88px 110px 90px 80px', padding: '13px 20px', borderBottom: i < visible.length - 1 ? '1px solid #f3f4f6' : 'none', alignItems: 'center', cursor: 'pointer', transition: 'background 0.1s' }}
                 onMouseEnter={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = '#f9fafb')}
                 onMouseLeave={e => ((e.currentTarget as HTMLDivElement).style.backgroundColor = 'transparent')}
               >
@@ -178,17 +175,13 @@ export default function ContractsPage() {
                 <span style={{ fontSize: 13, color: '#374151', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.customer_name}</span>
                 <PromptBadge contractType={c.contract_type} />
 
-                {/* 리스크 배지 */}
                 {parsing ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#3b82f6' }}>
-                    <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: '#3b82f6', display: 'inline-block', animation: 'pulse 1.2s infinite' }}/>
-                    분석중
-                  </span>
+                  <DataPill>분석</DataPill>
                 ) : risk ? (
-                  <span style={{ display: 'inline-flex', padding: '3px 8px', fontSize: 11, fontWeight: 700, borderRadius: 4, color: risk.color, backgroundColor: risk.bg, border: `1px solid ${risk.color}20`, letterSpacing: '0.03em' }}>
-                    {risk.label}
-                  </span>
-                ) : <span style={{ color: '#d1d5db' }}>—</span>}
+                  <DataPill>{risk.label}</DataPill>
+                ) : (
+                  <DataPill style={{ color: '#9ca3af', backgroundColor: '#fafafa' }}>—</DataPill>
+                )}
 
                 {/* 상태 */}
                 <span style={{ fontSize: 12, fontWeight: 500, color: st.color }}>{st.label}</span>
@@ -204,7 +197,7 @@ export default function ContractsPage() {
           onClick={() => fileRef.current?.click()}
           onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = '#9ca3af'; }}
           onMouseLeave={e => { if (!isDrag) (e.currentTarget as HTMLDivElement).style.borderColor = '#d1d5db'; }}
-          style={{ marginTop: 12, border: `1.5px dashed ${isDrag ? '#3b82f6' : '#d1d5db'}`, borderRadius: 8, padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', backgroundColor: isDrag ? '#eff6ff' : 'transparent', color: isDrag ? '#3b82f6' : '#9ca3af', transition: 'all 0.15s' }}
+          style={{ marginTop: 12, border: `1.5px dashed ${isDrag ? '#9ca3af' : '#d1d5db'}`, borderRadius: 8, padding: '18px 24px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, cursor: 'pointer', backgroundColor: isDrag ? '#f9fafb' : 'transparent', color: '#9ca3af', transition: 'all 0.15s' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -221,7 +214,7 @@ export default function ContractsPage() {
           <div style={{ backgroundColor: '#fff', borderRadius: 10, border: '1px solid #e5e7eb', padding: 24, width: 420, boxShadow: '0 12px 32px rgba(0,0,0,0.1)' }}>
             <div style={{ marginBottom: 20 }}>
               <h2 style={{ fontSize: 16, fontWeight: 600, color: '#111827', margin: 0 }}>계약서 업로드</h2>
-              <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>📎 {file?.name}</p>
+              <p style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>{file?.name}</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div>

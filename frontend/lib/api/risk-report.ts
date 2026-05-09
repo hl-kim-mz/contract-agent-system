@@ -106,10 +106,11 @@ export async function getRiskReport(contractId: string): Promise<RiskReport | nu
 }
 
 // ─── 표시 헬퍼 ───────────────────────────────────────────────────
+/** 표시용 — 유형 배지와 동일한 중립 톤(화면에서 테두리·강조색 미사용) */
 export const RISK_LEVEL_CFG: Record<string, { label: string; color: string; bg: string; border: string }> = {
-  HIGH:   { label: 'HIGH', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  MEDIUM: { label: 'MED',  color: '#d97706', bg: '#fffbeb', border: '#fde68a' },
-  LOW:    { label: 'LOW',  color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+  HIGH:   { label: 'HIGH', color: '#4b5563', bg: '#f3f4f6', border: '#e5e7eb' },
+  MEDIUM: { label: 'MED',  color: '#4b5563', bg: '#f3f4f6', border: '#e5e7eb' },
+  LOW:    { label: 'LOW',  color: '#4b5563', bg: '#f3f4f6', border: '#e5e7eb' },
 };
 
 export const RISK_TYPE_LABEL: Record<string, string> = {

@@ -143,7 +143,7 @@ export async function createComment(
     body: JSON.stringify(payload),
   });
   const json = await res.json();
-  return json.data as Comment[];
+  return json.data as Comment;
 }
 
 /** 댓글 삭제 */
