@@ -421,6 +421,8 @@ export default function ContractDetailPage() {
           borderLeft: '1px solid #e5e7eb',
           display: 'flex', flexDirection: 'column',
           backgroundColor: '#fafafa',
+          height: '100%',
+          overflow: 'hidden',
         }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid #e5e7eb' }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 8 }}>계약 이력 검색</p>
